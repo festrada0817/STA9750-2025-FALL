@@ -1,0 +1,14 @@
+---
+title: "Francis Estrada"
+---
+## About Me
+My name is Francis Estrada. I am currently a Master's student in Statistics at Baruch College. 
+I am passionate about data analysis, public policy, and telling a story from data to impact policy.
+Let's connect on [linkedin](https://www.linkedin.com/in/francisestrada817/)!
+
+```{r}
+#| include: false
+1+1
+```
+--------------
+Last Updated: `r format(Sys.time(), "%A %m %d, %Y at %H:%M%p")`
