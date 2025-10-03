@@ -1,0 +1,476 @@
+---
+title: "mp01.qmd"
+format: html
+editor: visual
+---
+
+![](https://upload.wikimedia.org/wikipedia/commons/6/69/Netflix_logo.svg)
+
+### Task 1: Loading Data
+
+```{r}
+if(!dir.exists(file.path("data", "mp01"))){ dir.create(file.path("data", "mp01"), showWarnings=FALSE, recursive=TRUE) }
+
+GLOBAL_TOP_10_FILENAME <- file.path("data", "mp01", "global_top10_alltime.csv")
+
+if(!file.exists(GLOBAL_TOP_10_FILENAME)){ download.file("https://www.netflix.com/tudum/top10/data/all-weeks-global.tsv", destfile=GLOBAL_TOP_10_FILENAME) }
+
+COUNTRY_TOP_10_FILENAME <- file.path("data", "mp01", "country_top10_alltime.csv")
+
+if(!file.exists(COUNTRY_TOP_10_FILENAME)){ download.file("https://www.netflix.com/tudum/top10/data/all-weeks-countries.tsv", destfile=COUNTRY_TOP_10_FILENAME) }
+```
+
+## Task 2: Data Import and Preparation
+
+Importing ***Global Top 10*** data and updating N/A values.
+
+```{r}
+if(!require("tidyverse")) install.packages("tidyverse") 
+library(readr) 
+library(dplyr)
+
+GLOBAL_TOP_10 <- read_tsv(GLOBAL_TOP_10_FILENAME)
+
+str(GLOBAL_TOP_10)
+
+glimpse(GLOBAL_TOP_10)
+
+GLOBAL_TOP_10 <- GLOBAL_TOP_10 |> mutate(season_title = if_else(season_title=="N/A",NA_character_, season_title)) #mutate to convert N/A to proper NA
+
+glimpse(GLOBAL_TOP_10)
+```
+
+Importing ***Country Top 10*** data and updating N/A values.
+
+```{r}
+COUNTRY_TOP_10<-read_tsv(COUNTRY_TOP_10_FILENAME, na=c("N/A"))#convert to proper N/A
+
+glimpse(COUNTRY_TOP_10)
+```
+
+### Task 3: Initial Data Exploration
+
+Creating a table using the DT package for ***Global Top 10***.
+
+```{r}
+if (!require("DT")) install.packages('DT')
+
+library(DT)
+
+library(stringr)
+
+format_titles <- function(df){ #creating a function to remove _ in the colnames
+    colnames(df) <- str_replace_all(colnames(df), "_", " ") |> str_to_title()
+    df
+}
+
+GLOBAL_TOP_10 |> 
+  mutate(`runtime_(minutes)`=round(60*runtime))|> #mutating runtime in the form of minutes
+  select(-season_title,-runtime)|> #removing season title and runtime
+  format_titles() |>
+    head(n=50) |>
+    datatable(options=list(searching=FALSE, info=FALSE))|>
+    formatRound(c('Weekly Hours Viewed', 'Weekly Views'))
+```
+
+## Task 4: Exploratory Questions
+
+1.  **How many different countries does Netflix operate in?**
+
+```{r}
+total_countries <- n_distinct(COUNTRY_TOP_10$country_name)
+```
+
+Netflix operates in ***`r total_countries`*** countries.
+
+2.  **Which non-English-language film has spent the most cumulative weeks in the global top 10? How many weeks did it spend?**
+
+```{r}
+non_eng_film<-GLOBAL_TOP_10|>
+  filter(category=="Films (Non-English)")|>
+  group_by(show_title)|>
+  summarise(weeks_in_top10=n())|>
+  arrange(desc(weeks_in_top10))
+
+#assigning values
+top_non_english_film<- non_eng_film|>slice(1)
+top_non_english_film_title<-top_non_english_film$show_title
+top_non_english_film_weeks<-top_non_english_film$weeks_in_top10
+```
+
+***`r top_non_english_film_title`*** is the non-English language film that has spent the most cumulative weeks in the global top 10, with ***`r top_non_english_film_weeks`*** weeks.
+
+3.  **What is the longest film (English or non-English) to have ever appeared in the Netflix global Top 10? How long is it in minutes?**
+
+```{r}
+#finding longest runtime
+longest_runtime<-
+  GLOBAL_TOP_10|>
+  filter(category%in% c("Films (Non-English)","Films (English)"))|>
+  group_by(show_title)|>
+  summarise(max_runtime=max(runtime, na.rm=TRUE))|>
+  arrange(desc(max_runtime))|>
+  mutate(max_runtime_minutes=round(max_runtime*60))|> #multiply by 60 to convert to minutes
+  slice(1)
+
+#assigning values
+longest_show_title<-longest_runtime$show_title
+longest_runtime_minutes<-longest_runtime$max_runtime_minutes
+```
+
+***`r longest_show_title`*** is the longest film to have appeared in the Netflix global top 10 with the runtime of ***`r longest_runtime_minutes`*** minutes.
+
+4.  **For each of the four categories, what program has the most total hours of global viewership?**
+
+```{r}
+#installing scales package for plots
+if(!require("scales")) install.packages("scales") 
+library(scales)
+
+#programs by category and getting the top 1 per category
+programs_by_category<-GLOBAL_TOP_10|>
+  group_by(category, show_title)|>
+  summarise(total_hours_viewed=sum(weekly_hours_viewed))|>
+  arrange(category,desc(total_hours_viewed))|>
+  group_by(category)|>
+  slice(1)|> #getting the first row by category
+  rename(`Category`=category, `Show Title` = show_title, `Total Hours Viewed`= total_hours_viewed)
+
+#creating a table to display top 1 program per category
+programs_by_category|>
+  datatable(options = list(searching=FALSE, info=FALSE),
+            caption= "Table 1: Program with the Most Total Hours of Global Viewership by Category") |>
+    formatRound(c('Total Hours Viewed'))
+```
+
+5.  **Which TV show had the longest run in a country’s Top 10? How long was this run and in what country did it occur?**
+
+```{r}
+# max of longest run in a country's top 10
+country_top_1<- COUNTRY_TOP_10|>
+  group_by(country_name, show_title)|>
+  summarise(total_weeks=sum(cumulative_weeks_in_top_10), .groups = "drop")|>
+  slice_max(order_by=total_weeks, n=1)
+
+#assinging values
+country_top_1_title<-country_top_1$show_title
+country_top_1_weeks<-country_top_1$total_weeks
+country_top_1_country<-country_top_1$country_name
+```
+
+The TV show that had the longest run in a country's Top 10 was ***`r country_top_1_title`***. It was in the top 10 for ***`r country_top_1_weeks`*** weeks in ***`r country_top_1_country`***.
+
+6.  **Netflix provides over 200 weeks of service history for all but one country in our data set. Which country is this and when did Netflix cease operations in that country?**
+
+```{r}
+#Getting the total weeks of service by country
+weeks_count<- COUNTRY_TOP_10|>
+  group_by(country_name)|>
+  summarise(total_weeks=n_distinct(week),.groups = "drop")
+
+#filtering countries with less than 200 weeks of service
+country_missing<-weeks_count|>
+  filter(total_weeks<200)
+
+#finding the final and reformatting the date
+final_week<-COUNTRY_TOP_10|>
+  filter(country_name==country_missing$country_name)|>
+  summarise(last_week=max(week))|>
+  mutate(new_date = format(as.Date(last_week), "%B %d, %Y"))
+
+#assign values
+country_name<-country_missing$country_name
+week<-final_week$new_date 
+```
+
+Netflix provided over 200 weeks of service history in every country except ***`r country_name`***. Netflix ceased operations in ***`r country_name`*** on ***`r week`***.
+
+7.  **What is the total viewership of the TV show Squid Game? Note that there are three seasons total and we are looking for the total number of hours watched across all seasons.**
+
+```{r}
+#filtering for squid game and calculating total views
+squid_game<-GLOBAL_TOP_10|>
+  filter(show_title=="Squid Game")|>
+  group_by(show_title)|>
+  summarise(total_hours_viewed=comma(sum(weekly_hours_viewed)))
+
+#assigning values
+show_title<-squid_game$show_title
+hours<-squid_game$total_hours_viewed
+```
+
+Across all 3 seasons of Squid Game, the total number of hours viewed was ***`r hours`***.
+
+8.  **The movie Red Notice has a runtime of 1 hour and 58 minutes. Approximately how many views did it receive in 2021?**
+
+```{r}
+library(lubridate)
+
+#filtering for red notice and calculating views in 2021
+red_notice_2021 <- GLOBAL_TOP_10 |>
+  filter(show_title == "Red Notice", year(week) == 2021)|>
+  group_by(show_title)|>
+  summarise(total_views=comma((1+58/60)*sum(weekly_hours_viewed)))
+
+#assigning values
+total_views<-red_notice_2021$total_views
+```
+
+Based on the total viewing hours and the film's runtime, Red Notice received approximately ***`r total_views`*** on Netflix in 2021.
+
+9.  **How many Films reached Number 1 in the US but did not originally debut there?**
+
+```{r}
+#filtering for USA films at weekly rank 1
+usa_films<-COUNTRY_TOP_10|>
+  filter(country_name=="United States", category=="Films", weekly_rank==1)
+
+#filtering films debut at number 1
+usa_debuts <- COUNTRY_TOP_10 |>
+  filter(country_name == "United States", category == "Films") |>
+  group_by(show_title) |>
+  summarise(
+    debut_week = min(week),
+    debut_rank = weekly_rank[which.min(week)],
+    .groups = "drop")
+
+#getting titles at number 1 vs debuting at number 1
+num1_titles<-unique(usa_films$show_title)
+num1_titles_and_debut<-usa_debuts|>
+  filter(show_title%in% num1_titles, debut_rank>1)
+
+#counting total films reached number
+count<-nrow(num1_titles_and_debut)
+```
+
+A total of ***`r count`*** films first appeared on the US Top 10 chart at a rank lower than Number 1 but eventually became more popular and reached Number 1.
+
+10. **Which TV show/season hit the top 10 in the most countries in its debut week? In how many countries did it chart?**
+
+```{r}
+#getting top tv shows during their debut
+top_1<-COUNTRY_TOP_10|>
+  filter(category=="TV")|>
+  group_by(country_name, show_title, season_title)|>
+  summarise( debut_week = min(week))
+
+#counting total weeks
+countries_count<-top_1|>
+  group_by(show_title, season_title, debut_week)|>
+  summarise(number_countries=n_distinct(country_name))
+
+#filtering for 94 countries
+top_debut <- countries_count |>
+  filter(number_countries == 94)|>
+  rename(`Show Title` = show_title, 'Season Title'=season_title, 'Debut Week'=debut_week, 'Number of Countries'=number_countries)
+
+#creating table for top debut shows in most countries
+top_debut|>
+  datatable(options = list(searching=FALSE, info=FALSE),
+            caption= "Table 2: TV show/season that hit the top 10 in the most countries in its debut week.") 
+
+```
+
+### Task 5: Press Release 1
+
+```{r}
+#installing ggthemes for plots
+if(!require("ggthemes")) install.packages("ggthemes") 
+library(ggthemes)
+
+#filtering for stranger things all 4 seasons
+st_global <- GLOBAL_TOP_10 |>
+  filter(grepl("Stranger Things", show_title), 
+         season_title %in% c("Stranger Things 1", "Stranger Things 2", "Stranger Things 3", "Stranger Things 4"))
+
+#calculating total hours viewed
+total_hours_viewed <- comma(sum(st_global$weekly_hours_viewed, na.rm = TRUE))
+
+#countries where stranger things was in the top 10
+st_country <- COUNTRY_TOP_10 |>
+  filter(grepl("Stranger Things", show_title),
+         season_title %in% c("Stranger Things 1", "Stranger Things 2", "Stranger Things 3", "Stranger Things 4"))
+
+#summing up the total weeks in the global top 10
+total_weeks_global <- n_distinct(st_country$week)
+
+#counting countries stranger things was in the top 10
+countries_charted <- n_distinct(st_country$country_name)
+
+#comparing other english tv shows to stranger things (weekly hour views)
+top_english_tv <- GLOBAL_TOP_10 |>
+  filter(category == "TV (English)") |>
+  group_by(show_title) |>
+  summarise(total_hours_viewed = sum(weekly_hours_viewed, na.rm = TRUE), .groups = "drop") |>
+  arrange(desc(total_hours_viewed))
+
+#assigning values
+top_5_shows <- top_english_tv |> slice_head(n = 5)
+
+```
+
+**After 3 years, Stranger Things: Season 5 will arrive on Netflix at the end of 2025!**
+
+Stranger Things, the science fiction horror series set in 1980s Hawkins, Indiana, first premiered in July 2016. The first four seasons have been a massive success, bringing in a total of ***`r total_hours_viewed`*** hours viewed and dominating the Netflix Top 10 charts for ***`r total_weeks_global`*** weeks across ***`r countries_charted`*** countries.
+
+Currently, Stranger Things stands as the most viewed English-language show on Netflix, surpassing other major titles such as Wednesday, Bridgerton, Ginny & Georgia, and You. However, the question remains: Will the upcoming season achieve the same overwhelming viewership? After the series Wednesday experienced a notable drop in views for its second season three years after its debut, expectations are high but uncertain for Stranger Things. Only time will tell whether Season 5 can live up to its historic success in viewership.
+
+```{r}
+# plot to show and highlight stranger things having the most weekly hour views
+ggplot(top_5_shows, aes(x = reorder(show_title, total_hours_viewed), y = total_hours_viewed,
+                        fill = show_title)) +
+geom_col() +
+  labs(title = "Top 5 Most Viewed English-language TV Shows on Netflix",
+       x = "Show Title",
+       y = "Total Hours Viewed") +
+  scale_fill_manual(values = c("Stranger Things" ="#E50914", "Wednesday" = "#111111",
+                               "Bridgerton" = "#111111","Ginny & Georgia" = "#111111",
+                               "You" = "#111111")) +
+   theme_tufte() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))+
+  theme(legend.position = "none")+
+  theme(
+  axis.title.y = element_blank(),
+  axis.text.y = element_blank(),
+  axis.ticks.y = element_blank(),
+  axis.line.y = element_blank())+
+  geom_text(aes(label = scales::comma(total_hours_viewed)), 
+          hjust = .5,
+          vjust=-.5,
+          color = "#111111", 
+          fontface = "bold")+
+  coord_cartesian(ylim = c(0, max(top_5_shows$total_hours_viewed) * 1.2))
+```
+
+### Task 6: Press Release 2
+
+```{r}
+#filtering for India while calculating shows in the top 10 
+india_top_programs <- COUNTRY_TOP_10 |>
+  filter(country_name == "India") |>
+  group_by(show_title) |>
+  summarise(total_weeks = n_distinct(week), .groups = "drop") |>
+  arrange(desc(total_weeks))|>
+  slice_head(n = 10)
+
+#filtering for shows originally in Hindi
+india_4_programs <- GLOBAL_TOP_10 |>
+  filter(show_title %in% c(
+    "The Great Indian Kapil Show",
+    "The Railway Men - The Untold Story Of Bhopal 1984",
+    "Khakee: The Bihar Chapter",
+    "Maamla Legal Hai"
+  )) |>
+  group_by(show_title) |>
+  summarise(total_views_global = sum(weekly_hours_viewed, na.rm = TRUE))
+
+#getting global views for the same shows that appeared in India's top 10 
+india_total_views <- GLOBAL_TOP_10 |>
+  filter(show_title %in% c(
+    "The Great Indian Kapil Show",
+    "The Railway Men - The Untold Story Of Bhopal 1984",
+    "Khakee: The Bihar Chapter",
+    "Maamla Legal Hai"
+  )) |>
+  summarise(total_views_global = comma(sum(weekly_hours_viewed, na.rm = TRUE)))
+
+#assingning values
+show_titles <- c(
+  "The Great Indian Kapil Show",
+  "The Railway Men - The Untold Story Of Bhopal 1984",
+  "Khakee: The Bihar Chapter",
+  "Maamla Legal Hai"
+)
+
+total_views_all <- india_total_views$total_views_global
+
+total_weeks_all_shows <- sum(india_top_programs$total_weeks, na.rm = TRUE)
+
+#plot to show 4 of the 10 shows/film are originally in Hindi
+# shows originally in Hindi, "The Great Indian Kapil Show","The Railway Men - The Untold Story Of Bhopal 1984", "Khakee: The Bihar Chapter", "Maamla Legal Hai"
+ggplot(india_top_programs, aes(x = reorder(show_title, total_weeks), y = total_weeks,
+                        fill = show_title)) +
+geom_col() +
+  labs(title = "India's Top 10 TV Shows and Films: Total Weeks Spent on the Top 10 Chart",
+       x = "Show Title",
+       subtitle = "The TV/Films highlighted in red are those that are originally in Hindi.") +
+  scale_fill_manual(values = c( "The Great Indian Kapil Show"="#E50914", "Squid Game"= "#111111", "Money Heist" = "#111111","Wednesday" = "#111111", "The Railway Men - The Untold Story Of Bhopal 1984" = "#E50914", "Khakee: The Bihar Chapter"= "#E50914", "All of Us Are Dead"= "#111111", "Maamla Legal Hai"= "#E50914", "RRR (Hindi)"= "#111111","Stranger Things"="#111111")) +
+   theme_tufte() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))+
+  theme(legend.position = "none")+
+  theme(
+  axis.title.y = element_blank(),
+  axis.text.y = element_blank(),
+  axis.ticks.y = element_blank(),
+  axis.line.y = element_blank())+
+  geom_text(aes(label = scales::comma(total_weeks)), 
+          hjust = .5,
+          vjust=-.5,
+          color = "#111111", 
+          fontface = "bold")+
+  coord_cartesian(ylim = c(0, max(india_top_programs$total_weeks) * 1.2))
+```
+
+***New Local Hits Prove a Success in India's Market: Netflix Celebrates Surging Viewership for Indian Originals***
+
+Netflix first launched in India in *January 2016* and rapidly established itself as a major destination for local films and original programming. In India, four out of the platform’s ten most viewed programs this year were Hindi-language hits, including ***`r show_titles`***. Together, these titles spent a combined total of ***`r total_weeks_all_shows`*** weeks in India’s Top 10 charts, reflecting their extraordinary resonance with local audiences. Collectively, these four programs generated a total of ***`r total_views_all`*** hourly views globally, highlighting not only their domestic appeal but also growing international interest. Globally the top viewed Non English Film or TV show is ***Saiyaara*** bringing in neary 12 million hours viewed. Striking as a phenomenon across the globe.
+
+```{r}
+#table demonstrating that Saiyaara has the most views in the TV/Films (non-English) category
+GLOBAL_TOP_10 |> 
+  filter(category==c("TV (Non-English)","Films (Non-English)"))|>
+  mutate(`runtime_(minutes)`=round(60*runtime))|> #mutating runtime in the form of minutes
+  select(-season_title,-runtime)|> #removing season title and runtime
+  format_titles() |>
+    head(n=50) |>
+    datatable(options=list(searching=FALSE, info=FALSE))|>
+    formatRound(c('Weekly Hours Viewed', 'Weekly Views'))
+```
+
+### Task 7: Press Release 3
+
+```{r}
+#assigning central america values
+central_america_countries <- c(
+  "Belize", "Costa Rica", "El Salvador", 
+  "Guatemala", "Honduras", "Nicaragua", "Panama")
+
+#finding top 10 shows in central america
+central_america_top <- COUNTRY_TOP_10 |>
+  filter(country_name %in% central_america_countries) |>
+  group_by(show_title) |>
+  summarise(total_weeks_in_CA_top10 = n_distinct(week), .groups = "drop") |>
+  arrange(desc(total_weeks_in_CA_top10)) |>
+  slice_head(n = 10)
+
+#plot showing how many of the top 10 shows are originally in spanish
+ggplot(central_america_top, aes(x = reorder(show_title, total_weeks_in_CA_top10), y = total_weeks_in_CA_top10,
+                        fill = show_title)) +
+geom_col() +
+  labs(title = "Top 10 TV Shows and Films in Central America: Total Weeks Spent on the Top 10 Chart",
+       x = "Show Title",
+       subtitle = "The TV/Films highlighted in red are those that are originally in Spanish.") +
+  scale_fill_manual(values = c( "Pablo Escobar, el patrón del mal"="#E50914", "Squid Game"= "#111111", "Pasión de Gavilanes" = "#E50914","Café con aroma de mujer" = "#E50914", "Yo soy Betty, la fea"= "#E50914", "Pedro el escamoso"= "#E50914", "The Queen of Flow"= "#E50914", "Til Money Do Us Part"= "#E50914", "Newly Rich, Newly Poor"= "#E50914",Shrek="#111111")) +
+   theme_tufte() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))+
+  theme(legend.position = "none")+
+  theme(
+  axis.title.y = element_blank(),
+  axis.text.y = element_blank(),
+  axis.ticks.y = element_blank(),
+  axis.line.y = element_blank())+
+  geom_text(aes(label = scales::comma(total_weeks_in_CA_top10)), 
+          hjust = .5,
+          vjust=-.5,
+          color = "#111111", 
+          fontface = "bold")+
+  coord_cartesian(ylim = c(0, max(central_america_top$total_weeks_in_CA_top10) * 1.2))
+```
+
+***Netflix Celebrates Its Expansion in Latin America: Partnering to Support Sustainable Growth of the Audiovisual Ecosystem***
+
+Netflix has been working on new investment opportunities in Latin America to create growth in the audiovisual industries in Central America. As reported by [CAF](https://www.caf.com/en/currently/news/caf-and-netflix-sign-alliance-to-boost-the-audiovisual-sector-in-latin-america-and-the-caribbean/), the development bank of Latin America, Netflix and CAF have signed a landmark alliance designed to boost the region’s creative sector by investing in training and research, and supporting projects that foster social inclusion and local storytelling.
+
+*“With the collaboration between governments and their communities on the one hand, and private initiatives on the other, we will be able to ambitiously and rigorously take Latin America's audiovisual industries to the place their talent and cultures deserve. Together we will transform projects into realities,” said Francisco Ramos, Vice President of Content for Latin America at Netflix.*
+
+Netflix has been very successful within Latin America, producing Spanish-speaking films. In fact, 8 out of 10 films most frequently appearing in Netflix’s regional Top 10 are originally in Spanish, demonstrating a strong demand for Spanish-language content among viewers in this demographic.
