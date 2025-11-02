@@ -1092,7 +1092,7 @@ top_industries_IL$GEOID<-as.numeric(top_industries_IL$GEOID)
 top_industries_IL <- top_industries_IL %>%
   left_join(target_cbsa, by = "GEOID")
 ```
-**From NIMBY to YIMBY: A Collaboration to Unlock Local Growth**
+**From NIMBY to YIMBY: A Collaboration to Unlock Local Growth (Between the Danville, IL Metro Area and the McAllen-Edinburg-Mission, TX Metro Area)**
 
 Housing availability remains a critical challenge across the United States, with some states experiencing more severe shortages than others. In recent years, the “YIMBY” (“Yes In My Backyard”) movement has gained traction as a counter to “NIMBY” (“Not In My Backyard”) opposition, advocating for policies that make it easier to build new homes and address affordability. Success stories from states like Texas, Georgia, and Arkansas show the positive impact of YIMBY reforms on local housing markets. This policy brief takes a closer look at the Danville, IL Metro Area and proposes a partnership with representatives from the McAllen-Edinburg-Mission, TX Metro Area recently recognized for YIMBY progress. Working together, these regions can develop and champion housing policies to help Danville become the next YIMBY success story.
 
