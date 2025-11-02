@@ -1,5 +1,5 @@
 ---
-title: "mp02"
+title: "mp02: Making Backyards Affordable for All"
 format:
   html:
     toc: true
@@ -635,7 +635,7 @@ prop_health<-ggplot(regional_health_share)+
   labs(
     title = "Regional Share of U.S. Health Sector Employment by Year",
     subtitle = "Each bar shows what proportion of all U.S. health care and social assistance workers are located in \n each region, for every year.",
-     caption = "Source: U.S. Bureau of Labor Statistics, Quarterly Census of Employment and Wages (QCEW), 2009–2023. Data collected and downloaded at https://www.bls.gov/cew/.",
+     caption = "Source: U.S. Bureau of Labor Statistics, Quarterly Census of Employment and Wages (QCEW), 2009–2023. \n Data collected and downloaded at https://www.bls.gov/cew/.",
     x = "Year",
     y = "Share of National Health Sector Employment",
     fill = "Region"
@@ -664,8 +664,20 @@ households <- HOUSEHOLDS %>%
   mutate(highlight_cities = NAME %in% c("New York-Newark-Jersey City, NY-NJ-PA Metro Area", 
                                         "Los Angeles-Long Beach-Anaheim, CA Metro Area"))
 
-#plot of household size by year#
-ggplot(households, aes(x = year, y = households, group = GEOID, color = highlight_cities)) +
+# Join population and households and calculate average household size
+average_household_size <- POPULATION %>%
+  select(GEOID, NAME, year, population) %>%
+  left_join(HOUSEHOLDS %>% select(GEOID, year, households),
+            by = c("GEOID", "year")) %>%
+  mutate(
+    avg_household_size = population / households,
+    highlight_cities = NAME %in% c("New York-Newark-Jersey City, NY-NJ-PA Metro Area", 
+                                   "Los Angeles-Long Beach-Anaheim, CA Metro Area")
+  ) %>%
+  group_by(GEOID)   # add this grouping step
+
+#plot
+ggplot(average_household_size, aes(x = year, y = avg_household_size, group = GEOID, color = highlight_cities)) +
   geom_line(show.legend = FALSE) +
   gghighlight(highlight_cities, use_direct_label = TRUE, label_key = NAME) +
   labs(
@@ -673,16 +685,18 @@ ggplot(households, aes(x = year, y = households, group = GEOID, color = highligh
     subtitle = "NYC and LA CBSAs are highlighted.",
     x = "Year",
     y = "Average Household Size",
-    caption = "Source: U.S. Census Bureau, American Community Survey 5-Year Estimates, Table B11001 (Household Type), \n accessed October 2025 at https://data.census.gov/") +
-  theme_minimal()+
+    caption = "Source: U.S. Census Bureau, American Community Survey 5-Year Estimates, Tables B01003 (Population) and B11001 (Household Type), accessed October 2025 at https://data.census.gov/"
+  ) +
+  theme_minimal() +
   theme(
     plot.title = element_text(face = "bold", size = 16),
     plot.subtitle = element_text(size = 10),
     axis.text.x = element_text(angle = -30, vjust = 1, hjust = 0)
-  )+
-  theme(axis.line = element_line(colour = "grey50"))+
-  theme(plot.background = element_rect())+
-  scale_y_continuous(labels = scales::comma)
+  ) +
+  theme(axis.line = element_line(colour = "grey50")) +
+  theme(plot.background = element_rect())
+
+
 ```
 
 ### Task 4: Rent Burden
@@ -836,38 +850,67 @@ comp_summary <- housing_growth %>%
 #building all 3 tables#
 # Instantaneous growth table
 inst_summary %>%
-  rename(c(CBSA = GEOID, "CBSA Name"=NAME,"Housing Units Permitted"=new_housing_units_permitted,
-           Population=population, "Permits per 1,000 Residents"=growth_instant, 
-           "Instantaneous Growth"=inst_scaled )) %>%
+  rename(
+    CBSA = GEOID,
+    "CBSA Name" = NAME,
+    "Housing Units Permitted" = new_housing_units_permitted,
+    Population = population,
+    "Permits per 1,000 Residents" = growth_instant,
+    "Instantaneous Growth" = inst_scaled
+  ) %>%
+  mutate(
+    `Permits per 1,000 Residents` = round(`Permits per 1,000 Residents`, 2),
+    `Instantaneous Growth` = round(`Instantaneous Growth`, 2)
+  ) %>%
   datatable(
     options = list(searching = FALSE, info = FALSE),
     caption = "Table 3: CBSAs with Highest Instantaneous Housing Growth (Permits per 1,000 residents)"
-  )
+  ) %>%
+  formatCurrency("Population", currency = "", interval = 3, mark = ",", digits = 0) %>%
+  formatCurrency("Housing Units Permitted", currency = "", interval = 3, mark = ",", digits = 0)
+
 ```
 **2. Rate-Based Metric Table: CBSAs with Highest Housing Growth Relative to Population Gain (Permits Issued Compared to 5-Year Population Growth)**
 ```{r Q5.2}
 # Rate-based growth table
 rate_summary %>%
-  rename(c(CBSA = GEOID, "Population Growth (5-Year)"=pop_growth_5yr,
-           "Housing Units Permitted"=new_housing_units_permitted, 
-           "Permits per Resident Added"=growth_rate,
-           "Rate-Based Growth (Scaled 0–100)"=rate_scaled,
-           "CBSA Name"=NAME)) %>%
+  rename(
+    CBSA = GEOID,
+    "Population Growth (5-Year)" = pop_growth_5yr,
+    "Housing Units Permitted" = new_housing_units_permitted,
+    "Permits per Resident Added" = growth_rate,
+    "Rate-Based Growth (Scaled 0–100)" = rate_scaled,
+    "CBSA Name" = NAME
+  ) %>%
+  mutate(
+    `Permits per Resident Added` = round(`Permits per Resident Added`, 2),
+    `Rate-Based Growth (Scaled 0–100)` = round(`Rate-Based Growth (Scaled 0–100)`, 2)
+  ) %>%
   datatable(
     options = list(searching = FALSE, info = FALSE),
     caption = "Table 4: CBSAs with Highest Housing Growth Relative to Population Gain"
-  )
+  ) %>%
+  formatCurrency("Population Growth (5-Year)", currency = "", interval = 3, mark = ",", digits = 0) %>%
+  formatCurrency("Housing Units Permitted", currency = "", interval = 3, mark = ",", digits = 0)
+
 ```
 **3. Composite Score Table: CBSAs Scoring Highest on Overall Housing Growth (Composite Metric Combining Instantaneous and Rate-Based Measures)**
 ```{r Q5.3}
 # Composite score table
 comp_summary %>%
-  rename(c(CBSA = GEOID,"Composite Housing Growth Score"=composite_score,
-           "CBSA Name"=NAME)) %>%
+  rename(
+    CBSA = GEOID,
+    "Composite Housing Growth Score" = composite_score,
+    "CBSA Name" = NAME
+  ) %>%
+  mutate(
+    `Composite Housing Growth Score` = round(`Composite Housing Growth Score`, 2)
+  ) %>%
   datatable(
     options = list(searching = FALSE, info = FALSE),
     caption = "Table 5: CBSAs Scoring Highest on Composite Housing Growth Metric"
   )
+
 ```
 
 ### Task 6: Visualization ###
