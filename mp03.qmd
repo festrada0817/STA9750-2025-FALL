@@ -1,0 +1,633 @@
+---
+title: "Mini-Project #03: Visualizing and Maintaining the Green Canopy of NYC"
+format:
+  html:
+    toc: true
+    toc-location: right
+editor: visual
+execute:
+  echo: false
+  message: false
+  warning: false
+---
+
+```{r T1}
+library(purrr)
+library(jsonlite)
+library(sf)
+library(dplyr)
+library(ggplot2)
+library(sf)
+#creating a directory for mp03#
+dir.create("data/mp03", recursive = TRUE)
+
+#loading nyc districts shp file#
+nyc_districts<-sf::st_read("/Users/francisestrada/STA9750-2025-FALL/data/mp03/nycc_25c/nycc.shp", quiet= TRUE)
+nyc_districts<-sf::st_transform(nyc_districts,crs = "WGS84") #transforms boundaries from native coordinate to worldwide standard coordinate
+
+library(dplyr)
+library(httr2)
+
+download_tree_points_httr2_limit <- function(limit = 10000, max_records = 50000, data_dir = "data/mp03/tree_points") {
+  dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
+  base_url <- "https://data.cityofnewyork.us/resource/hn5i-inap.geojson"
+  offset <- 0
+  all_files <- list()
+  observations <- 0
+  repeat {
+    if (observations >= max_records) break
+    api_url <- paste0(base_url, "?$limit=", limit, "&$offset=", format(offset, scientific=FALSE))
+    destfile <- file.path(data_dir, paste0("treepoints_", offset, ".geojson"))
+    if (!file.exists(destfile)) {
+      req <- request(api_url)
+      resp <- req_perform(req)
+      writeBin(resp_body_raw(resp), destfile)
+    }
+    all_files[[length(all_files) + 1]] <- destfile
+    n_features <- nrow(sf::st_read(destfile, quiet = TRUE))
+    observations <- observations + n_features
+    if (n_features < limit) break
+    offset <- offset + limit
+  }
+  # Combine all the full batches first
+  trees_list <- lapply(all_files, function(f) {
+    x <- sf::st_read(f, quiet = TRUE)
+    if ("planteddate" %in% names(x)) x$planteddate <- as.character(x$planteddate)
+    if ("riskratingdate" %in% names(x)) x$riskratingdate <- as.character(x$riskratingdate)
+    if ("updateddate" %in% names(x)) x$updateddate <- as.character(x$updateddate)
+    if ("createddate" %in% names(x)) x$createddate <- as.character(x$createddate)
+    if ("stumpdiameter" %in% names(x)) x$stumpdiameter <- as.character(x$stumpdiameter)
+    x
+  })
+  trees_all <- bind_rows(trees_list)
+  # Subset ONLY first 50,000 records (if more than 50k)
+  if (nrow(trees_all) > max_records) {
+    trees_all <- trees_all[1:max_records, ]
+  }
+  return(trees_all)
+}
+
+# Usage:
+all_trees <- download_tree_points_httr2_limit(limit = 10000, max_records = 50000)
+
+st_crs(nyc_districts) <- st_crs(all_trees) #forcing same crs
+```
+
+# Data Integration and Initial Exploration
+
+## Mapping NYC Trees
+
+```{r T2.1}
+library(ggplot2)
+
+#plot of districts with trees layer#
+ggplot()+
+  geom_sf(data = nyc_districts, fill="white", color="black", size=.4)+
+  geom_sf(data = all_trees, color="forestgreen", alpha=.2,size=.1)+
+  theme_minimal()+
+  labs(
+    title = "NYC Trees and Council Districts",
+    subtitle = "Plot of 50,000 Trees.",
+    caption = "Each point is a tree; black lines are district boundaries.")+
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_blank(),
+    axis.text = element_blank())+
+  theme(plot.background = element_rect())
+  
+    
+
+
+```
+
+## District-Level Analyses of Trees
+
+### 1. Which council district has the most trees?
+
+```{r T2.1a}
+#joining trees data with districts data by intersects
+nyc_trees<-st_join(all_trees,
+                    nyc_districts,
+                    join=st_intersects)
+
+#group by district then count
+trees_count<-nyc_trees%>%
+  group_by(CounDist)%>%
+  summarise(count=n())%>%
+  slice_max(order_by=count, n=1)
+
+#assigning values
+top_council_district<-trees_count$CounDist
+top_council_district_value<-trees_count$count
+top_council_district_value<-format(top_council_district_value, big.mark = ",")
+
+#creating data to plot the district with the most trees
+district_trees_count<-nyc_trees%>%
+  group_by(CounDist)%>%
+  summarise(count=n(), name="tree_total")
+
+district_trees_count<-district_trees_count%>%
+  st_drop_geometry()
+
+
+#join with nyc districts to get polygon data
+district_trees_count_poly<-nyc_districts%>%
+  left_join(district_trees_count, by="CounDist")
+
+#highlighting top 5  districts with the most trees
+top_5_districts<-district_trees_count_poly %>%
+  arrange(desc(count)) %>%
+  slice(1:5) %>%
+  pull(CounDist)
+
+#adding column to highlight the 5 districts with the most trees
+district_trees_count_poly<-district_trees_count_poly%>%
+  mutate(
+    highlight = ifelse(CounDist %in% top_5_districts, "Top 5", "Other"),
+    label = ifelse(CounDist %in% top_5_districts, as.character(CounDist), ""))
+
+#plot of the most trees within districts
+ggplot()+
+   geom_sf(data = nyc_districts, fill="grey", color="black", size=.4)+
+   geom_sf(
+    data = filter(district_trees_count_poly, highlight == "Top 5"),
+    aes(fill = count), color = "black", size = 0.8, show.legend = TRUE
+  ) +
+  scale_fill_gradient(name = "Tree Count", low = "lightgreen", high = "forestgreen", na.value = "gray90",labels = scales::comma ) +
+  theme_minimal() +
+  geom_sf_text(
+    data = filter(district_trees_count_poly, highlight == "Top 5"),
+    aes(label = label), color = "black", size = 4, fontface = "bold"
+  ) +
+  labs(
+    title = "NYC Districts: Highlighting Top 5 by Tree Count",
+    subtitle = "Top 5 filled by count (plasma scale); others gray."
+  )+
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_blank(),
+    axis.text = element_blank())+
+  theme(plot.background = element_rect())
+```
+
+The council district with the most tree is council district ***`r top_council_district`*** with a total of ***`r top_council_district_value`*** trees.
+
+### 2. Which council district has the highest density of trees?
+
+```{r T2.2}
+#recounting trees by district
+tree_count<-nyc_trees%>%
+  group_by(CounDist)%>%
+  summarise(count=n())
+
+#creating a new column for tree density
+district_trees_count_poly<-district_trees_count_poly%>%
+  mutate(area_acre=Shape_Area/43560,
+         density_per_100_acres=(count/area_acre)*100)
+  
+
+top_density<-district_trees_count_poly%>%
+  slice(1)
+
+top5_density<-district_trees_count_poly%>%
+  slice(1:5)
+
+#assigning values
+top_density_district<-top_density$CounDist
+
+#plot of the top 5 districts
+
+ggplot(top5_density)+
+aes(x = reorder(as.character(CounDist), density_per_100_acres), 
+                        y = density_per_100_acres, 
+                        fill = density_per_100_acres)+
+  geom_col(show.legend = FALSE)+
+  scale_y_continuous(
+    expand = c(0, 0),
+    limits = c(0, 25),                
+    name = "Tree Density (trees per 100 acres)",
+    labels = scales::comma
+  ) +
+  scale_fill_binned(
+    name = "Tree Density (per 100 acres)",
+    low = "lightgreen",
+    high = "forestgreen",
+    n.breaks = 5
+  ) +
+  labs(
+    title = "Top 5 NYC Districts by Tree Density",
+    x = "Council District"
+  ) +
+  theme_minimal()+
+  geom_text(aes(label = round(density_per_100_acres, 1)), vjust = -0.3, size = 4)+
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"))+
+  theme(plot.background = element_rect())
+
+
+```
+
+The council district with the highest density of trees is district ***`r top_density_district`***.
+
+### 3. Which district has highest fraction of dead trees out of all trees?
+
+```{r T2.3}
+#count of the dead trees by district
+tree_condition<-nyc_trees%>%
+  group_by(CounDist)%>%
+  summarise(
+    total_trees=n(),
+    dead_trees=sum(tpcondition=="Dead",na.rm = TRUE))%>%
+  mutate(dead_perc=(dead_trees/total_trees)*100)
+  
+top_dead<-tree_condition%>%
+  slice(1)
+
+#assigning values
+top_dead_district<-top_dead$CounDist
+
+#plot of the top 5 districts by dead tree perc
+top_5dead<-tree_condition%>%
+  slice(1:5)
+
+ggplot(top_5dead)+
+aes(x = reorder(as.character(CounDist), dead_perc), 
+                        y = dead_perc, 
+                        fill = dead_perc)+
+  geom_col(show.legend = FALSE)+
+  scale_y_continuous(
+    expand = c(0, 0),
+    limits = c(0, 25),                
+    name = "Percentage of Dead Trees (%)",
+    labels = scales::comma
+  ) +
+  scale_fill_binned(
+    name = "Percentage of Dead Trees",
+    low = "lightgray",
+    high = "black",
+    n.breaks = 5
+  ) +
+  labs(
+    title = "Top 5 City Council Districts with the Highest Percentage of Dead Trees",
+    x = "Council District"
+  ) +
+  theme_minimal()+
+  geom_text(aes(label = round(dead_perc, 1)), vjust = -0.3, size = 4)+
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"))+
+  theme(plot.background = element_rect())
+```
+
+The district with the highest percentage of dead trees is district ***`r top_dead_district`***.
+
+### 4. What is the most common tree species in Manhattan?
+
+```{r T2.4}
+library(scales)
+#adding borough column
+nyc_trees <- nyc_trees %>%
+  mutate(
+    borough = case_when(
+      CounDist >= 1  & CounDist <= 10 ~ "Manhattan",
+      CounDist >= 11 & CounDist <= 18 ~ "Bronx",
+      CounDist >= 19 & CounDist <= 32 ~ "Queens",
+      CounDist >= 33 & CounDist <= 48 ~ "Brooklyn",
+      CounDist >= 49 & CounDist <= 51 ~ "Staten Island",
+      TRUE ~ NA_character_))
+
+#filtering for manhattan
+manhattan_trees<-nyc_trees%>%
+  filter(borough=="Manhattan")
+
+#count of manhattan trees
+manhattan_trees_count <- manhattan_trees %>%
+  count(genusspecies, name = "n")
+
+#getting the top tree species
+top_manhattan_tree <- manhattan_trees_count %>%
+  arrange(desc(n)) %>%
+  slice(1)
+
+#assigning values
+top_manhattan_species<-top_manhattan_tree$genusspecies
+top_manhattan_species_value<-comma(top_manhattan_tree$n)
+
+#filtering for manhattan districts
+manhattan_districts<-nyc_districts%>%
+  filter(CounDist >= 1 & CounDist <= 10)
+
+#getting top 3 species of trees
+top3_manhattan_tree<-manhattan_trees_count%>%
+  arrange(desc(n)) %>%
+  slice(1:3)
+
+#filtering for top 3 species
+manhattan_top3_trees<-manhattan_trees%>%
+  filter(genusspecies%in%c("Gleditsia triacanthos var. inermis - Thornless honeylocust",
+                           "Pyrus calleryana - Callery pear",
+                           "Zelkova serrata - Japanese zelkova"))
+
+#plot of the top 3 species in manhattan
+ggplot()+
+  geom_sf(data = manhattan_districts, fill="lightgray", color="black",size=.6)+
+  geom_sf(data = manhattan_top3_trees,
+          aes(color = genusspecies),
+              size=1, alpha=.6)+
+  scale_color_manual(values = c("green","purple","blue"),
+                     name="Tree Species",
+                     labels=c("Gleditsia triacanthos var. inermis - \nThornless honeylocust",
+                           "Pyrus calleryana - Callery pear",
+                           "Zelkova serrata - Japanese zelkova"))+
+  labs(title="Top 3 Tree Species in Manhattan",
+      color="Tree Species")+
+  theme_minimal()+
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_blank(),
+    axis.text = element_blank())+
+  theme(plot.background = element_rect())
+  
+
+```
+
+The most common tree species in Manhattan is ***`r top_manhattan_species`*** with a total of ***`r top_manhattan_species_value`*** trees.
+
+### 5. What is the species of the tree closest to Baruch’s campus?
+
+```{r T2.5}
+new_st_point <- function(lon, lat) {
+  st_sfc(st_point(c(lon, lat)), crs = "WGS84")
+}
+
+#adding baruch
+baruch_point <- new_st_point(-73.9832, 40.7401) 
+
+#creating column with distance from baruch
+nyc_trees_with_dist <- nyc_trees %>%
+  mutate(distance = as.numeric(st_distance(geometry, baruch_point)))
+
+#finding closest tree
+closest_tree <- nyc_trees_with_dist %>%
+  arrange(distance) %>%
+  slice(1)
+
+closest_tree_species <- closest_tree$genusspecies
+
+#getting district 2
+district2 <- nyc_districts %>%
+  filter(CounDist == 2)
+
+nyc_trees_dist2<-nyc_trees%>%
+  filter(CounDist==2)
+
+#plot of baruch and closest tree species
+ggplot() +
+  geom_sf(data = district2, fill = "aliceblue", color = "black", size = 2) +
+  geom_sf(data = nyc_trees_dist2, aes(color = "Tree", shape = "Tree"), size = 1) +
+  geom_sf(data = baruch_point, aes(color = "Baruch College", shape = "Baruch College"), size = 2) +
+  geom_sf(data = closest_tree, aes(color = "Closest Tree", shape = "Closest Tree"), size = 2) +
+  scale_color_manual(
+    values = c("Tree" = "lightgreen", "Baruch College" = "blue", "Closest Tree" = "orange"),
+    name = "Point Type"
+  ) +
+  scale_shape_manual(
+    values = c("Tree" = 16, "Baruch College" = 15, "Closest Tree" = 17),
+    name = "Point Type"
+  ) +
+  labs(
+    title = "Baruch College Location and Nearest Tree in Council District 2",
+    caption = "Only Council District 2 is shown. Points are color/shape coded by type."
+  ) +
+  theme_minimal()+
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_blank(),
+    axis.text = element_blank())+
+  theme(plot.background = element_rect())
+  
+```
+
+The closest tree species to Baruch is the ***`r closest_tree_species`***.
+
+# NYC Parks Proposal
+
+## Proposed Tree Program for the South Bronx
+
+### Project Description
+
+As a city council staffer and native of the South Bronx, I propose expanding tree planting and maintenance in our district, focusing on increasing canopy cover, shade, and ecological benefits. This initiative addresses the urgent neighborhood needs such as reducing extreme heat, improving air quality, lowering asthma risk, and collaborating for a healthier urban environment.
+
+### Quantitative Project Scope
+
+We are proposing planting 1,000 new trees across Bronx Districts 11-18, focusing distribution according to each district's proportion of poor or dead trees as identified in our inventory. In addition, we recommend a field review and assessment of all trees with 'unknown' condition to determine their status and identity cases requiring maintenance, removal, or replacement.
+
+```{r T3.1}
+#creating new columns for the tree conditions
+tree_condition_summary <- nyc_trees %>%
+  group_by(borough, district = CounDist) %>%        # Add borough to group_by
+  summarise(
+    n_total = n(),
+    n_dead = sum(tpcondition == "Dead", na.rm = TRUE),
+    n_poor = sum(tpcondition == "Poor", na.rm = TRUE),
+    n_unknown = sum(tpcondition == "Unknown", na.rm = TRUE),
+    n_poor_or_dead = n_dead + n_poor
+  ) %>%
+  mutate(
+    pct_poor_or_dead = n_poor_or_dead / n_total * 100,
+    pct_unknown = n_unknown / n_total * 100
+  )
+
+bronx_tree_conditions<-tree_condition_summary%>%
+  filter(borough=="Bronx")
+  
+#calculating distribution of trees per district based on poor/dead trees
+total_pct<-sum(bronx_tree_conditions$pct_poor_or_dead)
+
+bronx_tree_conditions<-bronx_tree_conditions%>%
+  mutate(new_trees_alloc=round(1000*pct_poor_or_dead/total_pct))
+
+bronx_tree_conditions<-bronx_tree_conditions %>%
+  st_drop_geometry() %>%
+  mutate(
+    n_unknown = as.numeric(n_unknown),
+    new_trees_alloc = as.numeric(new_trees_alloc),
+    district = as.numeric(district)
+  )
+#table displaying the district, perc of poor/dead trees and new trees allocations
+library(DT)
+
+datatable(bronx_tree_conditions %>% 
+            select(district, new_trees_alloc ,  n_unknown ),
+          colnames = c("District", "New Trees Allocated", "Unknown"),
+          rownames = FALSE,
+          options = list(searching = FALSE),
+          caption ='Tree Allocation Proposal for Bronx Districts')
+```
+
+### Neighborhood Map Visual
+
+```{r T3.2}
+library(purrr)
+library(jsonlite)
+library(sf)
+library(dplyr)
+library(ggplot2)
+#loading in my map data layers#
+south_bronx<-nyc_districts%>%
+  filter((CounDist >= 11 & CounDist <= 18))
+
+base_url <- "https://data.cityofnewyork.us/resource/67g2-p84d.json"
+limit <- 5000
+offsets <- seq(0, 35000, by = limit) 
+
+# Loop to fetch chunks and combine:
+facilities_all <- map_df(offsets, function(offset) {
+  url <- paste0(base_url, "?$limit=", limit, "&$offset=", offset)
+  jsonlite::fromJSON(url)
+})
+
+bronx_facilaties<-bronx_facilities <- facilities_all[facilities_all$boro == "BRONX", ]
+
+priority_facsubgrp <- c(
+  "GED AND ALTERNATIVE HIGH SCHOOL EQUIVALENCY",
+  "PUBLIC K-12 SCHOOLS",
+  "BUS DEPOTS AND TERMINALS",
+  "HOSPITALS AND CLINICS"
+)
+
+bronx_priority_facilities <- bronx_facilities[bronx_facilities$facsubgrp %in% priority_facsubgrp, ]
+# Convert coordinates to numeric
+bronx_priority_facilities$longitude <- as.numeric(bronx_priority_facilities$longitude)
+bronx_priority_facilities$latitude  <- as.numeric(bronx_priority_facilities$latitude)
+
+# Remove rows with NA coordinates
+bronx_priority_facilities_clean <- bronx_priority_facilities[!is.na(bronx_priority_facilities$longitude) & !is.na(bronx_priority_facilities$latitude), ]
+
+# Convert to sf object
+bronx_priority_facilities_clean$longitude <- as.numeric(bronx_priority_facilities_clean$longitude)
+bronx_priority_facilities_clean$latitude  <- as.numeric(bronx_priority_facilities_clean$latitude)
+
+bronx_priority_sf <- st_as_sf(
+  bronx_priority_facilities_clean,
+  coords = c("longitude", "latitude"),
+  crs = 4326
+)
+
+bronx_priority_facilities_clean <- st_as_sf(
+  bronx_priority_facilities_clean,
+  coords = c("longitude", "latitude"),
+  crs = 4326
+)
+
+
+
+alive_conditions <- c("Excellent", "Good", "Fair")
+
+bronx_alive_trees <- nyc_trees %>%
+  filter(
+    tpcondition %in% alive_conditions,  
+    borough == "Bronx"                
+  )
+
+
+#plot to indentify gaps
+# 1. Base Map: South Bronx districts (sf polygon)
+ggplot() +
+  geom_sf(data = south_bronx, fill = "grey95", color = "grey40", size = 0.5) +
+  # 3. Add Alive Trees (sf points, jittered for visibility)
+  geom_sf(data = bronx_alive_trees, color = "forestgreen", alpha = 0.4, size = 0.2) +
+
+  # 4. Add Priority Facilities (colored by facdomain, shape by facdomain)
+  geom_sf(
+    data = bronx_priority_facilities_clean, 
+    aes(shape = facdomain, color = facdomain),
+    fill = "white", size = 1
+  ) +
+  scale_shape_manual(values = c(
+    "EDUCATION, CHILD WELFARE, AND YOUTH" = 21,  # circle
+    "HEALTH AND HUMAN SERVICES" = 22,            # square
+    "CORE INFRASTRUCTURE AND TRANSPORTATION" = 24 # triangle
+  )) +
+  scale_color_manual(values = c(
+    "EDUCATION, CHILD WELFARE, AND YOUTH" = "blue",
+    "HEALTH AND HUMAN SERVICES" = "red",
+    "CORE INFRASTRUCTURE AND TRANSPORTATION" = "orange"
+  )) +
+
+  labs(
+    title = "South Bronx: Tree Canopy and Key Facilities",
+    subtitle = "Major institutions by living street trees in focus neighborhoods.",
+    shape = "Facility Domain",
+    color = "Facility Domain"
+  ) +
+  theme_minimal()+
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_blank(),
+    axis.text = element_blank())+
+  theme(plot.background = element_rect())
+```
+
+The map visualizes the South Bronx, emphasizing major community facilities by domain—Education, Child Welfare, and Youth (including public K-12 schools and GED/high school equivalency centers), Health and Human Services (such as hospitals and clinics), and Core Infrastructure and Transportation (comprising bus depots and terminals). These locations are mapped alongside living street trees and local district boundaries. The proposed new trees are necessary because large portions of the neighborhood remain vulnerable to extreme heat, with insufficient shade near these critical school, health, and transit sites. Planting additional street trees will directly reduce surface temperatures, improve air quality, and shade key community gathering spaces—creating a safer, healthier environment for residents and children as climate risks intensify. By prioritizing shade near these critical institutions, the proposal enhances both immediate resilience and equitable climate adaptation for New York’s most heat-exposed communities.
+
+### District Comparison
+
+```{r T3.3}
+target_districts <- c("13", "33", "23", "4")
+
+nyc_trees_target <- nyc_trees %>%
+  filter(CounDist %in% target_districts)
+
+# Calculate dead and total count per district
+dead_summary <- nyc_trees_target %>%
+  group_by(CounDist) %>%
+  summarise(
+    dead_trees = sum(tpcondition == "Dead", na.rm = TRUE),
+    total_trees = n(),
+    percent_dead = round(100 * dead_trees / total_trees, 2)
+  )
+dead_summary$CounDist <- as.character(dead_summary$CounDist) 
+
+#bar plot of the perc dead trees
+dead_summary$color_group <- ifelse(dead_summary$CounDist == "13", "Bronx 13", "Other")
+
+ggplot(dead_summary, aes(x = reorder(CounDist, -percent_dead), y = percent_dead, fill = color_group)) +
+  geom_col(width = 0.7, show.legend = FALSE) +
+  scale_fill_manual(
+    values = c("Bronx 13" = "#2176ff", "Other" = "gray70")
+  ) +
+  scale_y_continuous(
+    expand = c(0, 0),
+    limits = c(0, 40),
+    name = "Percent Dead Trees (%)"
+  ) +
+  labs(
+    title = "Percent Dead Trees by Council District",
+    x = "Council District"
+  ) +
+  geom_text(
+    aes(label = round(percent_dead, 1)),
+    vjust = -0.5,
+    size = 4
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    plot.background = element_rect(fill = "white")
+  )
+```
+
+The bar chart displays the percentage of dead trees in four council districts, with Bronx District 13 highlighted in blue and the others in gray for easy comparison. Although districts 23, 4, and 33 have many trees and are known for substantial canopy coverage, District 13 stands out with a noticeably higher percent of dead trees. This disparity reveals that simply having a large number of street trees does not guarantee their health or resilience. The elevated mortality rate in District 13 underscores an urgent need for targeted tree replacement, ongoing maintenance, and greater investment in canopy care, especially when compared to peer districts with healthier tree populations. This finding helps guide priorities for equitable urban greening and supports focused shade interventions where vulnerability remains high.
+
+By investing in a robust tree planting and maintenance program for Bronx District 13 and its neighbors, the city can deliver meaningful public health, climate resilience, and neighborhood equity—advancing a greener future for all New Yorkers.
