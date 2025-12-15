@@ -6,6 +6,7 @@ format:
     code-summary: "Show code" 
     toc: true           # turn on table of contents
     toc-location: right # place TOC on the right side
+    self-contained: true
 author: "The Green Apple"
 date: "December 19,2025"
 ---
