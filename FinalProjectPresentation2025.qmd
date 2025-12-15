@@ -1,0 +1,57 @@
+---
+title: "Final Project Report: Are food deserts in the US linked to health problems like diabetes?"
+format:
+  html:
+    code-fold: true      # fold all code chunks (initially hidden)
+    code-summary: "Show code" 
+    toc: true           # turn on table of contents
+    toc-location: right # place TOC on the right side
+author: "The Green Apple"
+date: "December 19,2025"
+---
+![](TheGreenApple.jpeg)
+
+# 1. Overarching and Analytical Questions#
+The Green Apple team investigated the overarching question: **“Are food deserts in the United States linked to health problems such as diabetes?”** Building on this central question, the team examined four analytical questions: 
+
+* *How do income levels correlate with the presence of food deserts?*
+* *How does access to quality food vary across the United States?*
+* *How many fast food restaurants per capita are located in each state and county?*
+* *How do diabetes and obesity incidence patterns vary across the country?*
+
+```{mermaid}
+flowchart LR
+OQ["Overarching Question:<br/>Are 'food deserts' in the US linked to health problems like diabetes?"]
+
+  AQ1["Analytical Q1:<br/>How do income levels correlate with the presence of food deserts?"]
+  AQ2["Analytical Q2:<br/>How does access to quality food vary across the US?"]
+  AQ3["Analytical Q3:<br/>How many fast food restaurants per capita are in each state/county?"]
+  AQ4["Analytical Q4:<br/>How do diabetes and obesity incidence patterns vary across the country?"]
+
+  OQ --> AQ1
+  OQ --> AQ2
+  OQ --> AQ3
+  OQ --> AQ4
+```
+
+*Note: The USDA's Food Access Research Atlas defines low access to healthy
+food as being far from a supermarket.*
+
+# 2. Background and Previous Art#
+Before starting our analysis, our team conducted background research to understand existing statistics and visualizations on this topic. Key findings from this background work include:
+
+- About 18.8 million people, or 6.1% of the U.S. population, live in census tracts that are both low income and have low access to healthy food ([USDA Food Access Research Atlas](https://www.ers.usda.gov/data-products/food-access-research-atlas/documentation#:~:text=This%20measure%20shows%20that%20an%20estimated%2018.8%20million%20people%2C%20or%206.1%20percent%20of%20the%20U.S.%20population%2C%20live%20in%20low%2Dincome%20and%20low%20access%20tracts%20and%20are%20more%20than%201%20mile%20or%2010%20miles%20from%20a%20supermarket)).
+- Approximately 85% of counties with the highest food insecurity are rural ([Feeding America, Map the Meal Gap](https://www.feedingamerica.org/about-us/press-room/Map-the-Meal-Gap-2025)).
+- Nearly 9 out of 10 high food insecurity counties are located in the South ([Feeding America, Map the Meal Gap](https://www.feedingamerica.org/about-us/press-room/Map-the-Meal-Gap-2025)).
+- Approximately 20% of Americans with diabetes experience food insecurity ([American Diabetes Association](https://diabetes.org/about-us/health-equity-commitment/addressing-food-insecurity)).
+
+
+We also found a heat map illustrating the percentage of Americans who are food insecure, which helps contextualize the patterns we explore in our own analysis.([Food Deserts and Inequality](https://americaninequality.substack.com/p/food-deserts-and-inequality))
+![](heatmap.jpeg)
+
+# 3. Data Collection#
+This project draws on several complementary data sources to examine food access and health. *PLACES Census Tract Health Data 2025* provides modeled estimates of chronic disease outcomes and health-related behaviors for adults at the tract level across the United States, while *NaNDA Eating and Drinking Places* data supply counts and densities of public-facing food establishments by tract and ZIP code over time. The *USDA Food Access Research Atlas 2019* contributes tract-level indicators of low income and low access to supermarkets, and the *U.S. Census Bureau’s ACS B01003 (2015–2019)* offers core population denominators for small areas. Finally, the *CDC US Diabetes Surveillance System* adds surveillance indicators on diabetes burden and risk factors, allowing the team to connect neighborhood food environments with diabetes outcomes over recent years.
+
+# 4. Analysis#
+## Analytical Q1: How do income levels correlate with the presence of food deserts?##
+
