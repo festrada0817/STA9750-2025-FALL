@@ -55,3 +55,6 @@ This project draws on several complementary data sources to examine food access 
 # 4. Analysis#
 ## Analytical Q1: How do income levels correlate with the presence of food deserts?##
 
+```{r 4.1}
+
+```

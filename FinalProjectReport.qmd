@@ -1,0 +1,9 @@
+---
+title: "Final Project Report: Are \"food deserts\" in the US linked to health problems like diabetes?"
+author: "The Green Apple"
+date: "December 19, 2025"
+output: html_document
+---
+
+```{r}
+
