@@ -55,7 +55,64 @@ This project draws on several complementary data sources to examine food access 
 
 # 4. Analysis#
 ## Analytical Q1: How do income levels correlate with the presence of food deserts?##
+For the first analytical question we explore how income levels correlate with the presence of food deserts. To create this visualization, we merged census-tract–level data from the USDA Food Access Research Atlas with median household income from the American Community Survey. Each tract was classified as either a food-desert or non–food-desert tract, and we then used boxplots to compare the distribution of median income across these two groups. The resulting plot shows that food-desert tracts tend to have markedly lower median incomes than other tracts, highlighting a strong link between neighborhood income and unequal access to healthy food.
+![](boxplot.jpeg)
 
-```{r 4.1}
+To further examine how income levels relate to the presence of food deserts, we fit a logistic regression model predicting the probability that a census tract is a food desert as a function of its median household income. The fitted curve shows a steep, negative relationship: as median income rises, the likelihood of a tract being classified as a food desert drops sharply. Even a $10,000 increase in median income corresponds to a substantial reduction in the predicted probability of low food access, indicating that food deserts are concentrated overwhelmingly in the lowest-income neighborhoods.
+![](LM.jpeg)
 
-```
+For a more detailed description of the modeling steps and diagnostics, see [here](placeholder).
+
+## Analytical Q2: How does low access to healthy food vary across the US?##
+Food access disparities vary significantly by geographic and settlement context. Across the United States, 18% of urban census tracts are designated as low-access areas, while a substantially higher 84% of rural census tracts face low access to healthy food. This disparity reflects the structural challenges of serving dispersed populations in rural regions and suggests that food insecurity is not solely an urban phenomenon. Geographically, Arizona, Utah, and Florida show the highest overall prevalence of low-access tracts, with rural low-access areas visually dominating the map across the Midwest and West. The spatial pattern underscores how food deserts are concentrated in both sparsely populated regions and specific high-burden states, indicating that targeted interventions must address both rural-urban divides and state-level food system infrastructure gaps.
+![](2.1.jpeg)
+
+Building on these tract-level patterns, the next map focuses specifically on the population living within rural low-access areas. Using the half-mile/10-mile distance metric, it shows that approximately 54 million people nationwide are affected by low food access, with particularly large rural low-access populations in California, Texas, and Florida. Among rural low-access tracts, the average affected population is about 4.65 million and the median is 3.02 million, indicating that a substantial share of the rural population faces structural barriers to reaching supermarkets or large grocery stores. Together, these results highlight not only where low-access tracts are located but also how many people 
+are directly impacted, reinforcing the need for interventions that prioritize high-burden rural regions.
+
+![](2.2.jpeg)
+
+For a more detailed description of the modeling steps and diagnostics, see [here](placeholder).
+
+## Analytical Q3: How many fast food restaurants per capita are in each state/county?##
+To examine the availability of unhealthy food alternatives as a proxy for the broader food environment, we calculated the density of fast food restaurants per 1,000 people by state for 2019 using data from the NaNDA Eating and Drinking Places dataset merged with U.S. Census Bureau population estimates. The resulting choropleth map reveals marked geographic variation in fast food density, with southern states, particularly Mississippi, South Carolina, Tennessee, and North Carolina, showing the highest concentrations. Wyoming stands out as a notable outlier outside the South, exhibiting fast food density comparable to or exceeding many southern states. This pattern suggests that populations in the South and select western regions face not only challenges in accessing healthy food but also saturation of convenient fast food options, a combination that may reinforce unhealthy dietary patterns and contribute to elevated chronic disease risk in these high-burden regions.
+![](3.1.jpeg)
+
+At the county level, fast food density varies substantially within states, revealing fine-grained disparities in food environment inequality. The distribution of county-level fast food density shows a pronounced right skew, with most counties clustered at lower densities but a notable tail of high-density outliers. Pockets of particularly high fast food concentration appear in Virginia, Mississippi, and Colorado, reflecting how certain counties within these and other states face even more intense saturation than their state averages suggest. This heterogeneity underscores that food environment challenges operate at multiple geographic scales: while regional and state-level patterns matter, county-specific factors shape local opportunities for healthy eating, making targeted, place-based interventions essential for addressing food deserts and their health consequences.
+![](3.2.jpeg)
+
+For a more detailed description of the modeling steps and diagnostics, see [here](https://cait-u.github.io/STA9750-2025-FALL/finalprojectfastfood.html).
+
+## Analytical Q4: How do diabetes & obesity incidence patterns vary across the country?##
+Using CDC PLACES data, this figure summarizes how diabetes and obesity prevalence vary across census tracts nationwide. Median diabetes prevalence is about 12.5%, while median obesity prevalence is roughly 34.6%, with both measures showing roughly bell-shaped distributions and some right skew. Because obesity is a well-established risk factor for type 2 diabetes, these patterns suggest substantial geographic overlap in disease burden and motivate testing whether high-prevalence areas align with neighborhoods that face limited access to healthy food.
+![](4.1.jpeg)
+
+When mapped by census tract, both obesity and diabetes prevalence show clear regional clustering. Rates of both conditions are elevated across much of the country but are especially high in the rural Southeast, Southwest, and Appalachian regions. The overlap between obesity and diabetes hotspots aligns closely with areas identified earlier as having limited access to healthy food and high fast food density, reinforcing the idea that adverse food environments and chronic disease burdens are tightly linked in these communities.
+
+![](4.2.jpeg)
+
+To place these cross-sectional patterns in a temporal context, we used CDC US Diabetes Surveillance System data to map county-level diabetes prevalence in 2004, 2009, 2014, and 2019. Across these four time points, the maps show a clear, steady intensification of diabetes burden, with more counties shifting into higher-prevalence categories over time. 
+
+![](4.3.jpeg)
+
+To summarize how these two conditions intersect at the state level, we plotted average obesity prevalence against average diabetes prevalence, scaling bubble size by total state population. The strong upward trend in the scatter indicates that states with higher obesity rates almost always have higher diabetes rates as well, although a few states fall above or below the main cloud, suggesting somewhat better or worse diabetes outcomes than their obesity levels alone would predict. Larger bubbles highlight that some of the highest-burden states, such as Texas and Florida.
+
+![](4.4.jpeg)
+
+For a more detailed description of the modeling steps and diagnostics, see [here](https://jesse-nover.github.io/STA9750-2025-FALL/individual_report.html).
+
+# 5. Overall Findings#
+To directly assess whether neighborhood food environments help explain variation in diabetes, we estimated a linear regression model of tract-level diabetes prevalence using median household income, fast food restaurant density, and a low-access food desert indicator as predictors. The scatterplot of observed versus model-predicted diabetes rates shows a moderate fit, with an R² of 0.34, indicating that these three variables together account for roughly one-third of the cross-tract variation in diabetes prevalence. The coefficient estimates suggest that higher income and greater fast food density are associated with slightly lower diabetes rates, whereas living in a low-access tract is associated with a statistically significant increase of about 0.42 percentage points in diabetes prevalence, holding other factors constant. Although the model is intentionally simple and does not capture all determinants of diabetes, the results are consistent with the hypothesis that limited access to healthy food is meaningfully linked to higher diabetes burden at the neighborhood level.
+
+![](5.1.jpeg)
+
+We repeated this modeling framework for obesity, regressing tract-level obesity prevalence on median income, fast food density, and the low-access indicator. The actual-versus-predicted plot shows a somewhat stronger fit than for diabetes, with an R² of 0.43, meaning these three variables explain just over 40 percent of the variation in obesity rates across tracts. As with diabetes, higher income is associated with lower obesity prevalence, and the coefficient on fast food density is small and only marginally significant, suggesting a more nuanced relationship than simple proximity to fast food. In contrast, living in a low-access tract is associated with an estimated 1.9–percentage-point increase in obesity prevalence, net of income and fast food density, reinforcing the conclusion that limited access to healthy food is strongly linked to higher obesity burden at the neighborhood level.
+
+![](5.2.jpeg)
+
+For a more detailed description of the modeling steps and diagnostics, see [here](placeholder).
+
+# 6. Future Work# 
+This analysis points to several directions for future work that could deepen understanding of how food deserts shape diabetes and obesity risk. First, incorporating a richer set of sociodemographic and environmental covariates, such as age structure, race and ethnicity, educational attainment, physical activity opportunities, health care access, and built-environment features, would likely improve model fit and clarify which contextual factors most strongly mediate the food access and health relationship. Second, distinguishing type 1 from type 2 diabetes in the outcome data would allow more precise modeling of modifiable risk factors and better targeting of prevention strategies. Third, extending the economic context beyond median income to include poverty rates and state-level variation in safety net policies could help explain why some low-income places experience especially high disease burdens. Finally, because the fast food density coefficients were smaller and sometimes counterintuitive, future research should examine not just the count but also the type and nutritional profile of fast food and other prepared-food outlets to more accurately capture how local retail environments influence diet and health.
+
+![](6.1.jpeg)
