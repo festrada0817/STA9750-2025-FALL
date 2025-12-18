@@ -2,6 +2,7 @@
 title: "mp01.qmd"
 format: html
 editor: visual
+code_folding: hide
 ---
 
 ![](https://upload.wikimedia.org/wikipedia/commons/6/69/Netflix_logo.svg)
@@ -344,7 +345,7 @@ geom_col() +
 
 ### Task 6: Press Release 2
 
-```{r Press Release 2, echo=FALSE}
+```{r Press Release 2, code-fold FALSE}
 #filtering for India while calculating shows in the top 10 
 india_top_programs <- COUNTRY_TOP_10 |>
   filter(country_name == "India") |>

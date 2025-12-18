@@ -297,6 +297,7 @@ top_CBSA_amount_formatted <- comma(top_CBSA_amount)
 The CBSA that permitted the largest number of new housing units is ***`r top_CBSA_value`*** which is the ***`r top_CBSA_name`*** with a total of ***`r top_CBSA_amount_formatted`*** new housing units.
 
 **2. In what year did Albuquerque, NM (CBSA Number 10740) permit the most new housing units?**
+
 ```{r Q2}
 #filtering for Albuquerque, NM (CBSA Number 10740) and excluding pandemic years#
 Albuquerque_housing_units<-
@@ -319,9 +320,11 @@ top_Albuquerque_amount<-top_Albuquerque_named$new_housing_units_permitted
 top_Albuquerque_amount_formatted <- comma(top_Albuquerque_amount)
 top_Albuquerque_year<-top_Albuquerque_named$year
 ```
+
 The year that ***`r top_Albuquerque_name`*** allowed the largest number of housing units in ***`r top_Albuquerque_year`*** with a total of ***`r top_Albuquerque_amount_formatted`*** units. *Note: the results exclude COVID years (2020-2021) and post COVID years (2022-2023), due to any Pandemic effects.*
 
 **3. Which state (not CBSA) had the highest average individual income in 2015? To answer this question, you will need to first compute the total income per CBSA by multiplying the average household income by the number of households, and then sum total income and total population across all CBSAs in a state. With these numbers, you can answer this question.**
+
 ```{r Q3}
 #filtering income data for 2015#
 income_2015<-INCOME%>%
@@ -385,11 +388,13 @@ state_abbr<-top_state_income$state_abbr
 state_avg_income<-top_state_income$avg_individual_income
 state_avg_income_formatted <- dollar(state_avg_income)
 ```
+
 ![](https://usflags.design/assets/images/flag-new-hampshire.svg "NH Flag")
 
 The state that had the highest average individual income in 2015 is ***New Hampshire*** (`r state_abbr`) with an average income of ***`r state_avg_income_formatted`***.
 
 **4. Data scientists and business analysts are recorded under NAICS code 5182. What is the last year in which the NYC CBSA had the most data scientists in the country? In recent, the San Francisco CBSA has had the most data scientists.**
+
 ```{r Q4}
 #filtering for industry code 5182#
 data_analysts<-WAGES%>%
@@ -433,9 +438,11 @@ NYC_year<-top_cbsa_per_year_named_nyc$YEAR
 NYC_total_employees <- 7417424
 NYC_total_employees_formatted <- comma(NYC_total_employees)
 ```
+
 The last year in which the NYC CBSA had the most data scientist in the country was in ***`r NYC_year`*** with a total of ***`r NYC_total_employees_formatted`***.
 
 **5. What fraction of total wages in the NYC CBSA was earned by people employed in the finance and insurance industries (NAICS code 52)? In what year did this fraction peak?**
+
 ```{r Q5}
 #filtering for NYC fips#
 nyc_wages<-WAGES%>%
@@ -479,10 +486,13 @@ prop_year<-nyc_prop_top$YEAR
 proportion<-(nyc_prop_top$finance_insurance_prop)
 proportion_format<-percent(proportion , accuracy = 0.01)
 ```
+
 The proportion of total wages earned in NYC CBSA by finance and insurance employees is ***`r overall_prop_format`***. The year with the highest proportion of wages earned by finance and insurance employees was in ***`r prop_year`*** at ***`r proportion_format`***.
 
 ### Task 3: Initial Visualizations
+
 **1. The relationship between monthly rent and average household income per CBSA in 2009.**
+
 ```{r Q3.1}
 library(ggplot2)
 #gathering 2009 income and rent data#
@@ -560,6 +570,7 @@ ggplot(income_rent_2009)+
 ```
 
 **2. The relationship between total employment and total employment in the health care and social services sector (NAICS 62) across different CBSAs.**
+
 ```{r Q3.2}
 library(stringr)
 library(plotly)
@@ -653,9 +664,11 @@ interactive_prop_health <- ggplotly(prop_health, tooltip = "text")
 interactive_prop_health
 
 ```
+
 The reason I switched to this new visual is because the proportion of health care and social services jobs has stayed pretty steady, usually less than 10% of total employment, across all regions, CBSAs, and years we looked at. There weren’t any big changes in this ratio over time. That’s why I decided to focus more on the regional breakdowns of health sector workers, to visualize the changes over time even if they were minimal.
 
 **3. The evolution of average household size over time. Use different lines to represent different CBSAs.**
+
 ```{r Q3.3}
 library(gghighlight)
 
@@ -700,7 +713,9 @@ ggplot(average_household_size, aes(x = year, y = avg_household_size, group = GEO
 ```
 
 ### Task 4: Rent Burden
+
 **1.Pick a single Metropolitan Area and see how rent burden has changed over time**
+
 ```{r Q4.1}
 library(DT)
 #joining Income and Rent#
@@ -746,11 +761,10 @@ baltimore_trend %>%
 
 This table reports the Baltimore metro’s rent-to-income ratio each year—a value of 0.30 or above signals a rent-burdened typical household. "Baseline Ratio" is the starting year’s value, and "Delta vs Baseline" captures how this measure has changed since then.
 
-Example (2023):
-In 2023, Baltimore-Columbia-Towson, MD Metro Area had a rent-to-income ratio of 0.198, meaning the typical household spent about 19.8% of income on rent—well below the 30% threshold for rent burden. The baseline ratio was 0.192, so the ratio increased by only 0.006, or 0.6 percentage points, from the starting year.
-
+Example (2023): In 2023, Baltimore-Columbia-Towson, MD Metro Area had a rent-to-income ratio of 0.198, meaning the typical household spent about 19.8% of income on rent—well below the 30% threshold for rent burden. The baseline ratio was 0.192, so the ratio increased by only 0.006, or 0.6 percentage points, from the starting year.
 
 **2. Highlight the Metro Areas highest and lowest with the highest and lowest rent burden**
+
 ```{r Q4.2}
 #latest year
 latest_year <- max(income_rent$year, na.rm = TRUE)
@@ -786,11 +800,13 @@ extremes %>%
   formatRound(c('Rent-to-Income Ratio', 'Baseline Ratio', 'Delta vs Baseline'), digits = 3)
 
 ```
+
 This table spotlights the five metropolitan areas where rent consumes the largest and smallest share of household income in the latest year. "Rent-to-Income Ratio" measures how much annual rent costs take from typical income, a ratio of 0.30 or higher signals rent burden. "Baseline Ratio" gives each metro's starting value, and "Delta vs Baseline" shows how affordability has shifted over time.
 
+### Task 5: Housing Growth
 
-### Task 5: Housing Growth ###
 **1. Instantaneous Metric Table: CBSAs with Highest Instantaneous Housing Growth**
+
 ```{r Q5.1}
 #joining population and housing
 housing_growth <- POPULATION %>%
@@ -870,7 +886,9 @@ inst_summary %>%
   formatCurrency("Housing Units Permitted", currency = "", interval = 3, mark = ",", digits = 0)
 
 ```
+
 **2. Rate-Based Metric Table: CBSAs with Highest Housing Growth Relative to Population Gain (Permits Issued Compared to 5-Year Population Growth)**
+
 ```{r Q5.2}
 # Rate-based growth table
 rate_summary %>%
@@ -894,7 +912,9 @@ rate_summary %>%
   formatCurrency("Housing Units Permitted", currency = "", interval = 3, mark = ",", digits = 0)
 
 ```
+
 **3. Composite Score Table: CBSAs Scoring Highest on Overall Housing Growth (Composite Metric Combining Instantaneous and Rate-Based Measures)**
+
 ```{r Q5.3}
 # Composite score table
 comp_summary %>%
@@ -913,8 +933,10 @@ comp_summary %>%
 
 ```
 
-### Task 6: Visualization ###
+### Task 6: Visualization
+
 **Plot 1: YIMBY Successes by State**
+
 ```{r 6.1}
 #summarizing rent burden metrics at the CBSA level#
 rent_burden_summ <- income_rent %>%
@@ -1004,7 +1026,9 @@ ggplot(joined_map, aes(long, lat, group = group, fill = yimby_count)) +
     theme(plot.background = element_rect())
 
 ```
+
 **Plot 2: Interactive YIMBY Success Scatterplot**
+
 ```{r 6.2}
 #plot of trends showing whether YIMBY successes cluster or scatter
 # Top 15 YIMBY successes (by composite score)
@@ -1032,9 +1056,11 @@ p <- ggplot(yimby_success, aes(x = composite_score, y = rent_burden_change, text
 ggplotly(p, tooltip = c("text", "x", "y", "size"))
 
 ```
+
 *Findings:* Among 42 metropolitan and micropolitan areas identified as YIMBY successes, regions with above-average housing growth, population gains, and reductions in rent burden, the state-level heat map and interactive scatter plot illustrate that these successes are spread throughout the country, with each metro’s path combining housing growth, affordability, and migration in distinct ways; overall, the data reveal no single dominant relationship among the three metrics, demonstrating that while expanding supply is linked to positive outcomes, local factors drive a variety of approaches to improved affordability and population growth.
 
-### Task 7: Policy Brief ###
+### Task 7: Policy Brief
+
 ```{r 7.1}
 #filtering for YIMBY and NIMBY
 target_cbsa<-cbsa_summ%>%
@@ -1135,6 +1161,7 @@ top_industries_IL$GEOID<-as.numeric(top_industries_IL$GEOID)
 top_industries_IL <- top_industries_IL %>%
   left_join(target_cbsa, by = "GEOID")
 ```
+
 **From NIMBY to YIMBY: A Collaboration to Unlock Local Growth (Between the Danville, IL Metro Area and the McAllen-Edinburg-Mission, TX Metro Area)**
 
 Housing availability remains a critical challenge across the United States, with some states experiencing more severe shortages than others. In recent years, the “YIMBY” (“Yes In My Backyard”) movement has gained traction as a counter to “NIMBY” (“Not In My Backyard”) opposition, advocating for policies that make it easier to build new homes and address affordability. Success stories from states like Texas, Georgia, and Arkansas show the positive impact of YIMBY reforms on local housing markets. This policy brief takes a closer look at the Danville, IL Metro Area and proposes a partnership with representatives from the McAllen-Edinburg-Mission, TX Metro Area recently recognized for YIMBY progress. Working together, these regions can develop and champion housing policies to help Danville become the next YIMBY success story.
@@ -1145,8 +1172,7 @@ The Danville, IL Metro Area is facing persistent housing and population challeng
 
 *Policy Solution & Sponsorship*
 
-Legislation Proposal:
-The proposed Federal Pro-Housing Partnership Act would provide financial incentives and technical assistance to municipalities that adopt YIMBY-friendly zoning reforms, streamline permitting processes, or implement upzoning measures. Participating local governments would be rewarded for increasing new housing supply, reducing rent burden, and expanding housing choice by updating land-use codes, allowing accessory dwelling units, legalizing “missing middle” housing (such as duplexes and triplexes), and removing barriers like excessive parking minimums or lot size requirements. Funding would be allocated based on demonstrated outcomes in new housing development and affordability improvements, ensuring that federal dollars incentivize real results.​
+Legislation Proposal: The proposed Federal Pro-Housing Partnership Act would provide financial incentives and technical assistance to municipalities that adopt YIMBY-friendly zoning reforms, streamline permitting processes, or implement upzoning measures. Participating local governments would be rewarded for increasing new housing supply, reducing rent burden, and expanding housing choice by updating land-use codes, allowing accessory dwelling units, legalizing “missing middle” housing (such as duplexes and triplexes), and removing barriers like excessive parking minimums or lot size requirements. Funding would be allocated based on demonstrated outcomes in new housing development and affordability improvements, ensuring that federal dollars incentivize real results.​
 
 Sponsors:
 
@@ -1162,8 +1188,7 @@ These leaders will champion a pragmatic, outcome-based approach to addressing Am
 
 *Local Economic Impact*
 
-Key Industries in Each CBSA:
-To target legislative support and coalition partners, it is essential to understand the leading occupations driving each metro’s economy. Tables 6 and 7 (see below) present the top five industries by total employment for Danville, IL and McAllen–Edinburg–Mission, TX Metro Areas. Notably, sectors such as healthcare, retail, manufacturing, and transportation employ thousands of local residents and form the backbone of community prosperity.
+Key Industries in Each CBSA: To target legislative support and coalition partners, it is essential to understand the leading occupations driving each metro’s economy. Tables 6 and 7 (see below) present the top five industries by total employment for Danville, IL and McAllen–Edinburg–Mission, TX Metro Areas. Notably, sectors such as healthcare, retail, manufacturing, and transportation employ thousands of local residents and form the backbone of community prosperity.
 
 ```{r}
 #table for IL
@@ -1209,16 +1234,14 @@ datatable(
   ))%>% 
   formatCurrency("Total Employment", currency = "", interval = 3, mark = ",", digits = 0)
 ```
+
 High rent burdens in Danville pose direct threats to these vital groups—educators, nurses, retail clerks, and manufacturing workers face greater financial strain, diminished disposable income, and housing insecurity. In Texas, the YIMBY reforms are linked to stabilizing rents and supporting workforce retention in similar sectors.
 
 Union & Industry Partners:
 
 Within these key industries, major unions and trade organizations represent large voter blocs and influential advocacy networks. Partnerships with organizations like the National Education Association (teachers), SEIU and AFSCME (healthcare and government workers), United Food & Commercial Workers (retail), and Teamsters or AFL-CIO affiliates (transportation and logistics) can help drive support for pro-housing policies.
 
-By lowering rent costs and encouraging new construction, this bill benefits union members and industry workers, promoting:
--Higher disposable income for everyday expenses, education, and healthcare.
--Enhanced employee retention and stability for local businesses, schools, and hospitals.
--Creation of new jobs in construction, property management, and related fields.
+By lowering rent costs and encouraging new construction, this bill benefits union members and industry workers, promoting: -Higher disposable income for everyday expenses, education, and healthcare. -Enhanced employee retention and stability for local businesses, schools, and hospitals. -Creation of new jobs in construction, property management, and related fields.
 
 In short, aligning pro-housing reforms with the interests of local workers and organizations builds both economic momentum and a powerful coalition for legislative action.
 
@@ -1228,8 +1251,7 @@ Passing this bill offers immediate and long-term benefits for both sponsor commu
 
 ## Data Sources Used
 
-- ACS via tidycensus R package: [https://www.census.gov/programs-surveys/acs](https://www.census.gov/programs-surveys/acs)
-- Building Permits: [https://www.census.gov/construction/bps](https://www.census.gov/construction/bps)
-- BLS NAICS Codes: [https://www.bls.gov/cew/classifications/industry/industry-titles.htm](https://www.bls.gov/cew/classifications/industry/industry-titles.htm)
-- U.S. Congress Profiles: [https://www.congress.gov/members](https://www.congress.gov/members)
-
+-   ACS via tidycensus R package: <https://www.census.gov/programs-surveys/acs>
+-   Building Permits: <https://www.census.gov/construction/bps>
+-   BLS NAICS Codes: <https://www.bls.gov/cew/classifications/industry/industry-titles.htm>
+-   U.S. Congress Profiles: <https://www.congress.gov/members>
