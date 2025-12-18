@@ -1,0 +1,143 @@
+---
+title: "Analytical Q1: How do income levels correlate with the presence of food deserts?"
+author: "Francis Estrada"
+format:
+  html:
+    code-fold: true      # fold all code chunks (initially hidden)
+    code-summary: "Show code" 
+    toc: true           # turn on table of contents
+    toc-location: right # place TOC on the right side
+execute:
+  warning: false
+---
+# How do income levels correlate with the presence of food deserts? #
+To examine whether food-desert status is associated with income disadvantage, we merged tract-level data from the USDA Food Access Research Atlas with median household income from the ACS 2015–2019 5-year estimates, then stratified tracts by food-desert classification and compared income distributions using boxplots. The boxplot clearly demonstrates that food-desert tracts have substantially lower median household incomes, with the median income in food-desert tracts approximately $35,000 compared to roughly $62,000 in non-food-desert tracts. This nearly 45 percent income gap underscores the strong socioeconomic dimension of food deserts: neighborhoods with limited access to healthy food are not randomly distributed but cluster in economically disadvantaged areas. The marked difference in income distributions, combined with the narrower income range among food-desert tracts, suggests that limited food access is tightly intertwined with broader patterns of economic inequality and concentrated poverty, further reinforcing the rationale for treating food access as a social determinant of health amenable to policy intervention.
+
+```{r 1}
+library(readxl)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(scales)
+library(broom)
+library(tidycensus)
+
+# Read in the USDA Food Access Research Atlas Excel file,
+# selecting the sheet that contains census-tract–level data
+atlas <- read_excel("/Users/francisestrada/Downloads/FoodAccessResearchAtlasData2019.xlsx",
+                    sheet = "Food Access Research Atlas")
+
+# Read in ACS median household income data that were previously exported to Excel
+# and already contain standardized census tract identifiers
+acs <- read_excel("/Users/francisestrada/Downloads/ACSDT5Y2018.B19013_2025-11-26T113810/ACSDT5Y2018.B19013-Data.xlsm")
+
+# Make sure the tract ID in the Atlas file is stored as an 11-character string
+# (left-pad with zeros so it matches the ACS tract format: SSCCCTTTTTT)
+atlas <- atlas |>
+  mutate(CensusTract = str_pad(as.character(CensusTract), 11, pad = "0"))
+
+# Do the same for the tract ID in the ACS file to ensure a clean join key
+acs <- acs |>
+  mutate(tract = str_pad(as.character(tract), 11, pad = "0"))
+
+# Merge USDA Atlas and ACS income data by matching the standardized tract IDs
+atlas_acs <- atlas |>
+  left_join(acs, by = c("CensusTract" = "tract"))
+
+# Create human-readable and numeric indicators of food-desert status.
+# LILATracts_1And10 == 1 flags low-income, low-access tracts (food deserts)
+atlas_acs <- atlas_acs |>
+  mutate(
+    food_desert = ifelse(LILATracts_1And10 == 1, "Food Desert", "Not Food Desert"),
+    food_desert_flag = ifelse(LILATracts_1And10 == 1, 1, 0)
+  )
+
+# Clean median income field: remove commas, then coerce to numeric
+atlas_acs$med_income <- as.numeric(gsub(",", "", atlas_acs$med_income))
+atlas_acs$med_income <- as.numeric(atlas_acs$med_income)
+
+# Boxplot comparing median household income in food-desert vs. non-food-desert tracts
+ggplot(atlas_acs, aes(x = food_desert, y = med_income, fill = food_desert)) +
+  geom_boxplot() +
+  labs(
+    title = "Median Income in Food-Desert vs. Other Tracts",
+    subtitle = "Food deserts defined as low-access tracts (1 mile urban / 10 miles rural);\nmedian household income from ACS 2015–2019 5-year estimates",
+    x = "Food-Desert Status",
+    y = "Median Household Income (USD)",
+    fill = "Food-Desert Status",
+    caption = "Source: USDA Food Access Research Atlas (2019) and U.S. Census Bureau, ACS 2015–2019 5-year estimates"
+  ) +
+  # Format y-axis with comma separators and remove extra space below zero
+  scale_y_continuous(labels = comma, expand = c(0, 0)) +
+  # Set custom colors for food-desert vs. non-food-desert tracts
+  scale_fill_manual(values = c("Food Desert" = "#9badff",
+                               "Not Food Desert" = "#b4e6a2")) +
+  # Keep y-axis starting at zero and let upper limit be determined by the data
+  coord_cartesian(ylim = c(0, NA)) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",                    # Hide the legend (colors are obvious from x-axis labels)
+    panel.grid.major = element_blank(),         # Remove major grid lines for a cleaner look
+    panel.grid.minor = element_blank(),         # Remove minor grid lines
+    axis.line = element_line(color = "black"),  # Add axis lines for clarity
+    plot.caption = element_text(hjust = 0, size = 8, face = "italic"),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5)
+  )
+
+```
+
+To rigorously test the income–food-desert association, we fit a logistic regression model with food-desert status (coded 1 = food desert, 0 = other tract) as the outcome and median household income as the predictor. The model yields a highly significant negative coefficient (p < 0.001), confirming that tracts with higher median incomes are substantially less likely to meet low-access criteria. The magnitude of this effect is substantial: each $10,000 increase in median household income corresponds to a marked decrease in the predicted probability of food-desert classification. The fitted logistic curve, spanning the full income range observed in the data ($5,000–$250,000), demonstrates this inverse relationship visually: food-desert probability declines sharply at lower income levels and asymptotically approaches zero in higher-income neighborhoods. This pattern underscores a critical policy insight—that food access barriers are not randomly distributed but systematically concentrated in economically disadvantaged communities, suggesting that interventions to improve food access cannot be decoupled from broader efforts to address income inequality and economic opportunity in underserved neighborhoods.
+
+```{r 2}
+# Fit a logistic regression model predicting food-desert status
+# from median household income (lower income -> higher odds of being a food desert)
+mod <- glm(
+  LILATracts_1And10 ~ med_income,
+  data = atlas_acs,
+  family = binomial
+)
+
+# Model summary (coefficients, significance tests, goodness-of-fit)
+summary(mod)
+
+# Create a grid of income values across the observed range
+# to generate smooth predicted probabilities
+newdat <- data.frame(
+  med_income = seq(
+    min(atlas_acs$med_income, na.rm = TRUE),
+    max(atlas_acs$med_income, na.rm = TRUE),
+    length.out = 200
+  )
+)
+
+# Compute predicted probability of being a food-desert tract
+# for each value of median income in the grid
+newdat$prob_fd <- predict(mod, newdata = newdat, type = "response")
+
+# Plot the predicted probability of food-desert status as a function of income
+ggplot(newdat, aes(x = med_income, y = prob_fd)) +
+  geom_line(color = "#e792e7", linewidth = 1.2) +
+  labs(
+    title = "Predicted Probability of Food-Desert Status by Income",
+    subtitle = "Logistic regression of food-desert status (LA1and10) on tract median household income\nMedian income from ACS 2019 5-year estimates",
+    x = "Median Household Income (2015–2019, ACS 5-year)",
+    y = "Predicted Probability of Being a Food-Desert Tract",
+    caption = "Source: USDA Food Access Research Atlas (2019) and U.S. Census Bureau"
+  ) +
+  # Format x-axis labels with commas and reduce extra padding
+  scale_x_continuous(labels = comma, expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  # Ensure probabilities start at zero and let the upper limit be set by the data
+  coord_cartesian(ylim = c(0, NA)) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    plot.caption = element_text(hjust = 0, size = 8, face = "italic"),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5)
+  )
+```
