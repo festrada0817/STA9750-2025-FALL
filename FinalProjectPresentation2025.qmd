@@ -82,7 +82,7 @@ To examine the availability of unhealthy food alternatives as a proxy for the br
 
 ![](3.1.jpeg)
 
-At the county level, fast food density varies substantially within states, revealing fine-grained disparities in food environment inequality. The distribution of county-level fast food density shows a pronounced right skew, with most counties clustered at lower densities but a notable tail of high-density outliers. Pockets of particularly high fast food concentration appear in Virginia, Mississippi, and Colorado, reflecting how certain counties within these and other states face even more intense saturation than their state averages suggest. This heterogeneity underscores that food environment challenges operate at multiple geographic scales: while regional and state-level patterns matter, county-specific factors shape local opportunities for healthy eating, making targeted, place-based interventions essential for addressing food deserts and their health consequences.
+At the county level, fast food density varies substantially within states, revealing fine grained disparities in food environment inequality. The distribution of county-level fast food density shows a pronounced right skew, with most counties clustered at lower densities but a notable tail of high-density outliers. Pockets of particularly high fast food concentration appear in Virginia, Mississippi, and Colorado, reflecting how certain counties within these and other states face even more intense saturation than their state averages suggest. This heterogeneity underscores that food environment challenges operate at multiple geographic scales: while regional and state-level patterns matter, county-specific factors shape local opportunities for healthy eating, making targeted, place-based interventions essential for addressing food deserts and their health consequences.
 
 ![](3.2.jpeg)
 
@@ -97,11 +97,11 @@ When mapped by census tract, both obesity and diabetes prevalence show clear reg
 
 ![](4.2.jpeg)
 
-To place these cross-sectional patterns in a temporal context, we used CDC US Diabetes Surveillance System data to map county-level diabetes prevalence in 2004, 2009, 2014, and 2019. Across these four time points, the maps show a clear, steady intensification of diabetes burden, with more counties shifting into higher-prevalence categories over time. 
+To place these cross-sectional patterns in a temporal context, we used CDC US Diabetes Surveillance System data to map county-level diabetes prevalence in 2004, 2009, 2014, and 2019. Across these four time points, the maps show a clear, steady intensification of diabetes burden, with more counties shifting into higher prevalence categories over time. 
 
 ![](4.3.jpeg)
 
-To summarize how these two conditions intersect at the state level, we plotted average obesity prevalence against average diabetes prevalence, scaling bubble size by total state population. The strong upward trend in the scatter indicates that states with higher obesity rates almost always have higher diabetes rates as well, although a few states fall above or below the main cloud, suggesting somewhat better or worse diabetes outcomes than their obesity levels alone would predict. Larger bubbles highlight some of the highest-burden states, such as Texas and Florida.
+To summarize how these two conditions intersect at the state level, we plotted average obesity prevalence against average diabetes prevalence, scaling bubble size by total state population. The strong upward trend in the scatter indicates that states with higher obesity rates almost always have higher diabetes rates as well, although a few states fall above or below the main cloud, suggesting somewhat better or worse diabetes outcomes than their obesity levels alone would predict. Larger bubbles highlight some of the highest burden states, such as Texas and Florida.
 
 ![](4.4.jpeg)
 
@@ -112,7 +112,7 @@ To directly assess whether neighborhood food environments help explain variation
 
 ![](5.1.jpeg)
 
-We repeated this modeling framework for obesity, regressing tract-level obesity prevalence on median income, fast food density, and the low-access indicator. The actual-versus-predicted plot shows a somewhat stronger fit than for diabetes, with an R² of 0.43, meaning these three variables explain just over 40 percent of the variation in obesity rates across tracts. As with diabetes, higher income is associated with lower obesity prevalence, and the coefficient on fast food density is small and only marginally significant, suggesting a more nuanced relationship than simple proximity to fast food and highlighting potential confounding by broader neighborhood conditions and lifestyle factors. In contrast, living in a low-access tract is associated with an estimated 1.9–percentage-point increase in obesity prevalence, net of income and fast food density, reinforcing the conclusion that limited access to healthy food is strongly linked to higher obesity burden at the neighborhood level.
+We repeated this modeling framework for obesity, regressing tract-level obesity prevalence on median income, fast food density, and the low-access indicator. The actual versus predicted plot shows a somewhat stronger fit than for diabetes, with an R² of 0.43, meaning these three variables explain just over 40 percent of the variation in obesity rates across tracts. As with diabetes, higher income is associated with lower obesity prevalence, and the coefficient on fast food density is small and only marginally significant, suggesting a more nuanced relationship than simple proximity to fast food and highlighting potential confounding by broader neighborhood conditions and lifestyle factors. In contrast, living in a low-access tract is associated with an estimated 1.9 percentage point increase in obesity prevalence, net of income and fast food density, reinforcing the conclusion that limited access to healthy food is strongly linked to higher obesity burden at the neighborhood level.
 
 ![](5.2.jpeg)
 
