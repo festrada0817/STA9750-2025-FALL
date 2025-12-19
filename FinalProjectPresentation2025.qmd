@@ -101,7 +101,7 @@ To place these cross-sectional patterns in a temporal context, we used CDC US Di
 
 ![](4.3.jpeg)
 
-To summarize how these two conditions intersect at the state level, we plotted average obesity prevalence against average diabetes prevalence, scaling bubble size by total state population. The strong upward trend in the scatter indicates that states with higher obesity rates almost always have higher diabetes rates as well, although a few states fall above or below the main cloud, suggesting somewhat better or worse diabetes outcomes than their obesity levels alone would predict. Larger bubbles highlight that some of the highest-burden states, such as Texas and Florida.
+To summarize how these two conditions intersect at the state level, we plotted average obesity prevalence against average diabetes prevalence, scaling bubble size by total state population. The strong upward trend in the scatter indicates that states with higher obesity rates almost always have higher diabetes rates as well, although a few states fall above or below the main cloud, suggesting somewhat better or worse diabetes outcomes than their obesity levels alone would predict. Larger bubbles highlight some of the highest-burden states, such as Texas and Florida.
 
 ![](4.4.jpeg)
 
