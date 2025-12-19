@@ -1,0 +1,207 @@
+---
+title: "Analytical Q1: How do income levels correlate with the presence of food deserts?"
+author: "Francis Estrada"
+format:
+  html:
+    code-fold: true      # fold all code chunks (initially hidden)
+    code-summary: "Show code" 
+    toc: true           # turn on table of contents
+    toc-location: right # place TOC on the right side
+execute:
+  warning: false
+---
+# How do income levels correlate with the presence of food deserts? #
+## Background ##
+Income is a central axis along which food access inequalities in the United States are structured, and many official definitions of food deserts explicitly build in a low-income component [USDA ERS, Food Access Research Atlas Documentation](https://www.ers.usda.gov/data-products/food-access-research-atlas/documentation). Low-income neighborhoods often face multiple overlapping disadvantages, including greater distances to full-service supermarkets, fewer transportation options, and higher local food prices, all of which can limit access to affordable, nutritious foods [USDA ERS, Access to Affordable, Nutritious Food Is Limited in “Food Deserts”](https://www.ers.usda.gov/amber-waves/2010/march/access-to-affordable-nutritious-food-is-limited-in-food-deserts). Understanding how neighborhood income levels align with food-desert designations is therefore critical for assessing whether current patterns of supermarket access reinforce broader socioeconomic inequities and for identifying which communities should be prioritized for interventions aimed at improving healthy food access [USDA ERS, State-Level Estimates of Low Income and Low Access Populations](https://www.ers.usda.gov/data-products/food-access-research-atlas/state-level-estimates-of-low-income-and-low-access-populations).
+
+Income is also tightly intertwined with broader structural factors that influence food access, including housing affordability, transportation infrastructure, and patterns of commercial investment. Households with limited financial resources may be more sensitive to food prices and transportation costs, may have less flexibility in where they live, and may face time constraints due to multiple jobs or caregiving responsibilities, all of which can magnify the practical impact of living far from a supermarket. At the neighborhood level, lower property values and weaker consumer purchasing power can discourage large food retailers from locating in disadvantaged communities, reinforcing cycles of disinvestment and limiting the range of food outlets that are financially viable. Understanding how these income dynamics align with food‑desert designations is therefore essential for identifying where access barriers are most acute and which communities are likely to benefit most from targeted interventions [USDA ERS, State‑Level Estimates of Low Income and Low Access Populations](https://www.ers.usda.gov/data-products/food-access-research-atlas/state-level-estimates-of-low-income-and-low-access-populations)
+
+This project addresses this question by explicitly quantifying how tract‑level income distributions differ between food‑desert and non‑desert areas in the United States. By pairing the USDA Food Access Research Atlas with American Community Survey (ACS) income data, the analysis examines whether low‑access tracts, as currently defined in federal data, are systematically concentrated at the lower end of the income distribution and how large the resulting disparities are. 
+
+## Analysis ##
+To examine whether food-desert status is associated with income disadvantage, we merged tract-level data from the USDA Food Access Research Atlas with median household income from the ACS 2015–2019 5-year estimates, then stratified tracts by food-desert classification and compared income distributions using boxplots. The boxplot clearly demonstrates that food-desert tracts have substantially lower median household incomes, with the median income in food-desert tracts approximately $35,000 compared to roughly $62,000 in non-food-desert tracts. This nearly 45 percent income gap underscores the strong socioeconomic dimension of food deserts: neighborhoods with limited access to healthy food are not randomly distributed but cluster in economically disadvantaged areas. The marked difference in income distributions, combined with the narrower income range among food-desert tracts, suggests that limited food access is tightly intertwined with broader patterns of economic inequality and concentrated poverty, further reinforcing the rationale for treating food access as a social determinant of health amenable to policy intervention.
+
+```{r 1}
+library(readxl)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(scales)
+library(broom)
+library(tidycensus)
+
+# Read in the USDA Food Access Research Atlas Excel file,
+# selecting the sheet that contains census-tract–level data
+atlas <- read_excel("/Users/francisestrada/Downloads/FoodAccessResearchAtlasData2019.xlsx",
+                    sheet = "Food Access Research Atlas")
+
+# Read in ACS median household income data that were previously exported to Excel
+# and already contain standardized census tract identifiers
+acs <- read_excel("/Users/francisestrada/Downloads/ACSDT5Y2018.B19013_2025-11-26T113810/ACSDT5Y2018.B19013-Data.xlsm")
+
+# Make sure the tract ID in the Atlas file is stored as an 11-character string
+# (left-pad with zeros so it matches the ACS tract format: SSCCCTTTTTT)
+atlas <- atlas |>
+  mutate(CensusTract = str_pad(as.character(CensusTract), 11, pad = "0"))
+
+# Do the same for the tract ID in the ACS file to ensure a clean join key
+acs <- acs |>
+  mutate(tract = str_pad(as.character(tract), 11, pad = "0"))
+
+# Merge USDA Atlas and ACS income data by matching the standardized tract IDs
+atlas_acs <- atlas |>
+  left_join(acs, by = c("CensusTract" = "tract"))
+
+# Create human-readable and numeric indicators of food-desert status.
+# LILATracts_1And10 == 1 flags low-income, low-access tracts (food deserts)
+atlas_acs <- atlas_acs |>
+  mutate(
+    food_desert = ifelse(LILATracts_1And10 == 1, "Food Desert", "Not Food Desert"),
+    food_desert_flag = ifelse(LILATracts_1And10 == 1, 1, 0)
+  )
+
+# Clean median income field: remove commas, then coerce to numeric
+atlas_acs$med_income <- as.numeric(gsub(",", "", atlas_acs$med_income))
+atlas_acs$med_income <- as.numeric(atlas_acs$med_income)
+
+# Boxplot comparing median household income in food-desert vs. non-food-desert tracts
+ggplot(atlas_acs, aes(x = food_desert, y = med_income, fill = food_desert)) +
+  geom_boxplot() +
+  labs(
+    title = "Median Income in Food-Desert vs. Other Tracts",
+    subtitle = "Food deserts defined as low-access tracts (1 mile urban / 10 miles rural);\nmedian household income from ACS 2015–2019 5-year estimates",
+    x = "Food-Desert Status",
+    y = "Median Household Income (USD)",
+    fill = "Food-Desert Status",
+    caption = "Source: USDA Food Access Research Atlas (2019) and U.S. Census Bureau, ACS 2015–2019 5-year estimates"
+  ) +
+  # Format y-axis with comma separators and remove extra space below zero
+  scale_y_continuous(labels = comma, expand = c(0, 0)) +
+  # Set custom colors for food-desert vs. non-food-desert tracts
+  scale_fill_manual(values = c("Food Desert" = "#9badff",
+                               "Not Food Desert" = "#b4e6a2")) +
+  # Keep y-axis starting at zero and let upper limit be determined by the data
+  coord_cartesian(ylim = c(0, NA)) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",                    # Hide the legend (colors are obvious from x-axis labels)
+    panel.grid.major = element_blank(),         # Remove major grid lines for a cleaner look
+    panel.grid.minor = element_blank(),         # Remove minor grid lines
+    axis.line = element_line(color = "black"),  # Add axis lines for clarity
+    plot.caption = element_text(hjust = 0, size = 8, face = "italic"),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5)
+  )
+
+```
+The density plot of tract median household income by food-desert status provides a more complete view of how incomes are distributed across neighborhoods than the boxplot alone. The curve for food-desert tracts is sharply peaked at the lower end of the income scale and drops off quickly, with almost no mass in the middle- or higher-income ranges, indicating that deserts are heavily concentrated in a relatively narrow band of low-income communities. In contrast, the curve for non–food-desert tracts is flatter and stretches much farther to the right, covering a broad range of middle- and higher-income neighborhoods, which shows that ready access to supermarkets is common across much of the income distribution except at the very bottom. The limited overlap between the two curves visually reinforces the regression and boxplot findings, making clear that food deserts are not just slightly poorer than other areas but are disproportionately drawn from the lowest-income segments of the national tract income distribution.
+```{r 2}
+# Density plot of median income by food-desert status
+ggplot(atlas_acs, aes(x = med_income, fill = food_desert, color = food_desert)) +
+  geom_density(alpha = 0.35, linewidth = 0.9) +
+  labs(
+    title = "Distribution of Median Household Income\nby Food-Desert Status",
+    subtitle = "Median household income from ACS 2015–2019 5-year estimates",
+    x = "Median Household Income (USD)",
+    y = "Density",
+    fill = "Food-Desert Status",
+    color = "Food-Desert Status",
+    caption = "Source: USDA Food Access Research Atlas (2019) and U.S. Census Bureau, ACS 2015–2019 5-year estimates"
+  ) +
+  scale_x_continuous(labels = scales::comma, expand = c(0, 0)) +
+  coord_cartesian(xlim = c(0, quantile(atlas_acs$med_income, 0.99, na.rm = TRUE))) +
+  scale_fill_manual(values = c("Food Desert" = "#9badff",
+                               "Not Food Desert" = "#b4e6a2")) +
+  scale_color_manual(values = c("Food Desert" = "#4862d9",
+                                "Not Food Desert" = "#4a9c5d")) +
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    plot.caption = element_text(hjust = 0, size = 8, face = "italic"),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5)
+  )
+
+```
+To rigorously test the income–food-desert association, we fit a logistic regression model with food-desert status (coded 1 = food desert, 0 = other tract) as the outcome and median household income as the predictor. The model yields a highly significant negative coefficient (p < 0.001), confirming that tracts with higher median incomes are substantially less likely to meet low-access criteria. The magnitude of this effect is substantial: each $10,000 increase in median household income corresponds to a marked decrease in the predicted probability of food-desert classification. The fitted logistic curve, spanning the full income range observed in the data ($5,000–$250,000), demonstrates this inverse relationship visually: food-desert probability declines sharply at lower income levels and asymptotically approaches zero in higher-income neighborhoods. This pattern underscores a critical policy insight—that food access barriers are not randomly distributed but systematically concentrated in economically disadvantaged communities, suggesting that interventions to improve food access cannot be decoupled from broader efforts to address income inequality and economic opportunity in underserved neighborhoods.
+
+```{r 3}
+# Fit a logistic regression model predicting food-desert status
+# from median household income (lower income -> higher odds of being a food desert)
+mod <- glm(
+  LILATracts_1And10 ~ med_income,
+  data = atlas_acs,
+  family = binomial
+)
+
+# Model summary (coefficients, significance tests, goodness-of-fit)
+summary(mod)
+
+# Create a grid of income values across the observed range
+# to generate smooth predicted probabilities
+newdat <- data.frame(
+  med_income = seq(
+    min(atlas_acs$med_income, na.rm = TRUE),
+    max(atlas_acs$med_income, na.rm = TRUE),
+    length.out = 200
+  )
+)
+
+# Compute predicted probability of being a food-desert tract
+# for each value of median income in the grid
+newdat$prob_fd <- predict(mod, newdata = newdat, type = "response")
+
+# Plot the predicted probability of food-desert status as a function of income
+ggplot(newdat, aes(x = med_income, y = prob_fd)) +
+  geom_line(color = "#e792e7", linewidth = 1.2) +
+  labs(
+    title = "Predicted Probability of Food-Desert Status by Income",
+    subtitle = "Logistic regression of food-desert status (LA1and10) on tract median household income\nMedian income from ACS 2019 5-year estimates",
+    x = "Median Household Income (2015–2019, ACS 5-year)",
+    y = "Predicted Probability of Being a Food-Desert Tract",
+    caption = "Source: USDA Food Access Research Atlas (2019) and U.S. Census Bureau"
+  ) +
+  # Format x-axis labels with commas and reduce extra padding
+  scale_x_continuous(labels = comma, expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  # Ensure probabilities start at zero and let the upper limit be set by the data
+  coord_cartesian(ylim = c(0, NA)) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    plot.caption = element_text(hjust = 0, size = 8, face = "italic"),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5)
+  )
+```
+
+This table reports the results of the logistic regression that predicts whether a tract is a food desert from its median household income. The intercept (about 1.02) is the baseline log-odds of being a food desert when income is zero and is not itself substantively important. The key result is the negative coefficient for median household income (about −0.00006 per dollar), which means that as income increases, the chance that a tract is a food desert decreases. When scaled to realistic changes in income (for example, a $10,000 increase), this effect implies a sizeable drop in the probability of food-desert status, and the very small p-values show that this relationship is statistically precise.
+```{r 4}
+# Coefficient table
+coef_table <- tidy(mod) |>
+  mutate(
+    term = recode(term,
+                  "(Intercept)" = "Intercept",
+                  "med_income" = "Median household income"),
+    estimate = round(estimate, 5),
+    std.error = round(std.error, 5),
+    statistic = round(statistic, 2),
+    p.value = signif(p.value, 3)
+  )
+
+coef_table
+```
+
+# Challenges #
+Several data and methodological challenges shape how these findings should be interpreted. The USDA Food Access Research Atlas relies on secondary business listings and specific distance cutoffs to identify supermarkets, which can miss or misclassify stores and may undercount low-access areas in some communities. The ACS 5‑year estimates used for median income provide essential tract-level coverage but are subject to sizable sampling error and wide margins of error in smaller or sparsely populated tracts, which can introduce noise into the income measure. All results are ecological, based on census tracts rather than individuals, so they cannot speak directly to how a particular household experiences food access or health. In addition, the analysis uses pre‑pandemic data that average conditions over 2015–2019, meaning it may not fully capture more recent shifts in income, store closures, or supply-chain disruptions that affected local food environments. Finally, the models focus primarily on income and do not explicitly adjust for other structural factors such as racial segregation, urban–rural differences, or regional policy contexts, which likely interact with income to shape both food access and health outcomes.
+
+# Overall Findings #
+Taken together, the analyses show a consistent story in which income, food environments, and chronic disease outcomes are tightly interwoven. Food deserts are overwhelmingly concentrated in lower-income tracts, where residents face both reduced physical access to supermarkets and broader economic constraints on purchasing healthy food, and these same areas tend to have higher exposure to fast-food outlets and less supportive conditions for physical activity. At the national level, obesity and diabetes prevalence cluster in many of the same disadvantaged regions, particularly across the rural South and Appalachia, mirroring patterns of low income and limited food access and aligning with prior research that links food insecurity and unhealthy neighborhood food environments to elevated risk of diet-related chronic disease. Although the regression models in this project are descriptive, the convergence of spatial, socioeconomic, and health patterns strongly suggests that improving access to affordable, nutritious foods in low-income communities is likely to be an important component of strategies to reduce the burden of obesity and diabetes and to narrow persistent health inequities across places.
+
+# Policy Implications and Data Needs #
+The pattern of low income, limited supermarket access, and elevated obesity and diabetes burden points toward the need for multi-level policy responses that simultaneously expand healthy retail options, reduce transportation barriers, and strengthen household purchasing power in the same vulnerable tracts. Promising levers include targeted financial incentives for grocery and cooperative development in low-income, high-desert areas, transit and land-use changes that make it easier to reach full-service food outlets, and nutrition security programs that pair improved availability with affordability supports such as enhanced SNAP incentives and produce prescriptions. Effective implementation will also require stronger data systems that integrate federal tract-level sources like the Food Access Research Atlas, PLACES, and ACS with local data on store openings and closures, transit coverage, and residents’ perceived affordability and quality of food, enabling agencies to identify priority neighborhoods, monitor change in near real time, and rigorously evaluate which interventions produce durable improvements in diet and chronic disease outcomes.
